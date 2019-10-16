@@ -1,0 +1,9 @@
+hexmap-server.sln
+.idea
+Library
+obj
+Temp
+.gitattributes
+Assembly-CSharp.csproj
+/Assets/Plugins/Editor/JetBrains.meta
+/Assets/Plugins/Editor/JetBrains
