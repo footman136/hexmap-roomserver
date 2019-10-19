@@ -7,6 +7,8 @@ using System.Runtime.InteropServices;
 using Google.Protobuf;
 // https://blog.csdn.net/u014308482/article/details/52958148
 using Protobuf.Room;
+using UnityEditor;
+using UnityEditor.Build.Player;
 
 // https://github.com/LitJSON/litjson
 public class RoomMsgReply
@@ -38,6 +40,9 @@ public class RoomMsgReply
             int msgId = BitConverter.ToInt32(recvHeader, 0);
             switch ((ROOM) msgId)
             {
+                case ROOM.PlayerEnter:
+                    PLAYER_ENTER(recvData);
+                    break;
             }
         }
         catch (Exception e)
@@ -46,4 +51,20 @@ public class RoomMsgReply
         }
     }
 
+    public static void PLAYER_ENTER(byte[] bytes)
+    {
+        PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
+        PlayerInfo pi = new PlayerInfo()
+        {
+            Enter = input,
+        };
+        RoomManager.Instance.Players[_args] = pi;
+        RoomManager.Instance.Log($"MSG: 玩家登录房间服务器 - {input.Account}");
+
+        PlayerEnterReply output = new PlayerEnterReply()
+        {
+            Ret = true,
+        };
+        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+    }
 }

@@ -6,11 +6,9 @@
 /// 
 /// 
 using UnityEngine;
-using System.Collections;
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Xml.Xsl;
 
 public class ServerScript : MonoBehaviour {
 
@@ -29,10 +27,8 @@ public class ServerScript : MonoBehaviour {
     public string Address => _server.Address;
     public int Port => _server.Port;
 
-    public string ServerName;
-    public long ServerId;
     public bool IsReady;
-
+    
     // Use this for initialization
     void Start()
     {
@@ -46,19 +42,16 @@ public class ServerScript : MonoBehaviour {
         _server.Start(localEndPoint);
         _server.Completed += OnComplete;
 
-        ServerName = $"{_server.Address}:{_server.Port}";
-        ServerId = GuidToLongId(); // 生成唯一ID
-       
         string msg = $"Server is listening at address - {_server.Address}:{_server.Port} ...";
-        Debug.Log(msg);
+        Log(msg);
         IsReady = true;
     }
 
     void OnDestroy()
     {
         _server.Completed -= OnComplete;
-        _server.Stop();
-        Debug.Log("Server Stopped.");
+        //_server.Stop();
+        Log("Server Stopped.");
     }
 
     private void OnReceive(SocketAsyncEventArgs args, byte[] content, int offset, int size)
@@ -106,14 +99,9 @@ public class ServerScript : MonoBehaviour {
         byte[] dataBytes = System.Text.Encoding.UTF8.GetBytes(dataStr);
         _server.Send(args, dataBytes, dataBytes.Length);
     }
-    
-    /// <summary>  
-    /// 根据GUID获取19位的唯一数字序列  
-    /// </summary>  
-    /// <returns></returns>  
-    private static long GuidToLongId()
+
+    public void Log(string msg)
     {
-        byte[] buffer = Guid.NewGuid().ToByteArray();
-        return BitConverter.ToInt64(buffer, 0);
-    }   
+        _server.Log(msg);
+    }
 }

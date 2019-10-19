@@ -18,10 +18,16 @@ public class RoomManager : MonoBehaviour
     private string receive_str;
 
     // 玩家的集合，Key是玩家的TokenId，因为真正的账号系统我们不一定能够获得玩家的账号名
-    public Dictionary<long, PlayerInfo> Players { set; get; }
+    public Dictionary<SocketAsyncEventArgs, PlayerInfo> Players { set; get; }
     
     // 房间的集合，Key是房间的唯一ID
     public Dictionary<long, RoomInfo> Rooms { set; get; }
+
+    public string ServerName;
+    public long ServerId;
+    public int MaxRoomCount;
+    public int CurRoomCount;
+    public int MaxPlayerPerRoom;
 
     void Awake()
     {
@@ -30,16 +36,17 @@ public class RoomManager : MonoBehaviour
             Debug.LogError("RoomManager must be Singleton! 必须是单例！！！");
         }
         Instance = this;
-        Players = new Dictionary<long, PlayerInfo>();
+        Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
         Rooms = new Dictionary<long, RoomInfo>();
     }
-    
+
+    #region 初始化
     // Start is called before the first frame update
     void Start()
     {
         _server.Received += OnReceive;
         _server.Completed += OnComplete;
-        Debug.Log("RoomManager Started!");
+        _server.Log("RoomManager Started!");
 
         StartCoroutine(WaitForReady());
     }
@@ -56,11 +63,48 @@ public class RoomManager : MonoBehaviour
         {
             yield return null;
         }
+        
+        ServerName = $"{_server.Address}:{_server.Port}";
+        ServerId = GuidToLongId(); // 生成唯一ID
+        MaxRoomCount = 5;
+        CurRoomCount = 0;
+        MaxPlayerPerRoom = 30;
+       
         receive_str = $"Server started! {_server.Address}:{_server.Port}";
         // RoomServer已经启动成功，开始监听了，进入Connecting阶段，开始连接大厅服务器
         ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
     }
 
+    /// <summary>  
+    /// 根据GUID获取19位的唯一数字序列  
+    /// </summary>  
+    /// <returns></returns>  
+    private static long GuidToLongId()
+    {
+        byte[] buffer = Guid.NewGuid().ToByteArray();
+        return BitConverter.ToInt64(buffer, 0);
+    }
+    
+    void OnGUI()
+    {
+        if (receive_str != null)
+        {
+            var style = GUILayout.Width(600) ;
+            GUILayout.Label (receive_str, style);
+            GUILayoutOption[] style2 = new GUILayoutOption[2] {style, GUILayout.Height(60)};
+            string msg = $"----Player Count:{Players.Count}/{_server.MaxClientCount} - Room Count:{Rooms.Count}/{MaxRoomCount} - MaxPlayerPerRoom:{MaxPlayerPerRoom}";
+            GUILayout.Label (msg, style2);
+        }
+    }
+
+    public void Log(string msg)
+    {
+        receive_str = msg;
+        _server.Log(msg);
+    }
+    
+    #endregion
+    
     void OnReceive(SocketAsyncEventArgs args, byte[] content, int size)
     {
         receive_str = System.Text.Encoding.UTF8.GetString(content);
@@ -73,32 +117,33 @@ public class RoomManager : MonoBehaviour
         {
             case ServerSocketAction.Listen:
                 // 因为启动顺序的关系，这段代码不会被执行到
-                receive_str = $"Server started! {_server.Address}:{_server.Port}";
-                Debug.Log(receive_str);
+                receive_str = $"RoomServer started! {_server.Address}:{_server.Port}";
+                _server.Log(receive_str);
                 break;
             case ServerSocketAction.Accept:
-                receive_str = $"Server accepted a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
-                Debug.Log(receive_str);
+                receive_str = $"RoomServer accepted a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
+                _server.Log(receive_str);
                 break;
             case ServerSocketAction.Send:
             {
                 int size = args.BytesTransferred;
-                Debug.Log($"Server send a message. {size} bytes");
+                _server.Log($"RoomServer send a message. {size} bytes");
             }
                 break;
             case ServerSocketAction.Receive:
             {
                 int size = args.BytesTransferred;
-                Debug.Log($"Server receive a message. {size} bytes");
+                _server.Log($"RoomServer receive a message. {size} bytes");
             }
                 break;
             case ServerSocketAction.Drop:
-                receive_str = $"Server drop a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
-                Debug.Log(receive_str);
+                DropAClient(args);
+                receive_str = $"RoomServer drop a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
+                _server.Log(receive_str);
                 break;
             case ServerSocketAction.Close:
-                receive_str = "Server Stopped!";
-                Debug.Log(receive_str);
+                receive_str = "RoomServer Stopped!";
+                _server.Log(receive_str);
                 break;
             case ServerSocketAction.Error:
                 receive_str = System.Text.Encoding.UTF8.GetString(args.Buffer);
@@ -107,18 +152,6 @@ public class RoomManager : MonoBehaviour
         }
     }
 
-    void OnGUI()
-    {
-        if (receive_str != null)
-        {
-            var style = GUILayout.Width(600) ;
-            GUILayout.Label (receive_str, style);
-            GUILayoutOption[] style2 = new GUILayoutOption[2] {style, GUILayout.Height(60)};
-            string msg = $"----Player Count:{Players.Count} - Room Count:{Rooms.Count}";
-            GUILayout.Label (msg, style2);
-        }
-    }
-    
     /// <summary>
     /// 新增的发送消息函数，增加了消息ID，会把前面的消息ID（4字节）和后面的消息内容组成一个包再发送
     /// </summary>
@@ -132,5 +165,18 @@ public class RoomManager : MonoBehaviour
         Array.Copy(sendHeader, 0, sendData, 0, 4);
         Array.Copy(data, 0, sendData, 4, data.Length);
         _server.SendMsg(args, sendData, sendData.Length);
+    }
+
+    public void DropAClient(SocketAsyncEventArgs args)
+    {
+        if (Players.ContainsKey(args))
+        {
+            Log($"MSG: 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
+            Players.Remove(args);
+        }
+        else
+        {
+            Log("MSG: RoomServer - Reomve Player failed - Player not found!");
+        }
     }
 }

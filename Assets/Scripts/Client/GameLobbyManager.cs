@@ -59,9 +59,11 @@ public class GameLobbyManager : ClientScript
                 // RoomServer向LobbyServer发送第一条消息，登录该RoomServer
                 RoomServerLogin data = new RoomServerLogin()
                 {
-                    ServerName = RoomManager.Instance._server.ServerName,
-                    ServerId = RoomManager.Instance._server.ServerId,
-                    MaxPlayerCount = RoomManager.Instance._server.MaxClientCount,
+                    ServerName = RoomManager.Instance.ServerName,
+                    ServerId = RoomManager.Instance.ServerId,
+                    MaxRoomCount = RoomManager.Instance.MaxRoomCount,
+                    CurRoomCount = 0,
+                    MaxPlayerPerRoom = RoomManager.Instance.MaxPlayerPerRoom,
                     Address = RoomManager.Instance._server.Address,
                     Port = RoomManager.Instance._server.Port,
                 };

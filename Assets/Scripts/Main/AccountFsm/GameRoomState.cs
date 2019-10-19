@@ -15,7 +15,8 @@ public class GameRoomState : FsmBaseState<ConnectionStateMachine, ConnectionFSMS
 
     public override void Enter()
     {
-        UIManager.Instance.BeginLoading();
+        UIManager.Instance.EndConnecting();
+        Debug.Log("房间服务器 OK！");
     }
 
     public override void Tick()
