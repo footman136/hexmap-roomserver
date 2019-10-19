@@ -11,7 +11,6 @@ using Protobuf.Lobby;
 
 public class GameLobbyManager : ClientScript
 {
-    
     // Start is called before the first frame update
     void Start()
     {
@@ -62,7 +61,6 @@ public class GameLobbyManager : ClientScript
                     ServerName = RoomManager.Instance.ServerName,
                     ServerId = RoomManager.Instance.ServerId,
                     MaxRoomCount = RoomManager.Instance.MaxRoomCount,
-                    CurRoomCount = 0,
                     MaxPlayerPerRoom = RoomManager.Instance.MaxPlayerPerRoom,
                     Address = RoomManager.Instance._server.Address,
                     Port = RoomManager.Instance._server.Port,

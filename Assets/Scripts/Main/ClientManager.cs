@@ -18,6 +18,8 @@ namespace Main
 
         void Awake()
         {
+            if(Instance != null)
+                Debug.LogError("ClientManager is Singleton! Cannot be created again!");
             Instance = this;
             _lobbyManager.gameObject.SetActive(false);
             DontDestroyOnLoad(gameObject);

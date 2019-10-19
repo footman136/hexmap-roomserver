@@ -33,7 +33,7 @@ public class RoomManager : MonoBehaviour
     {
         if (Instance != null)
         {
-            Debug.LogError("RoomManager must be Singleton! 必须是单例！！！");
+            Debug.LogError("RoomManager is Singleton! Cannot be created again!");
         }
         Instance = this;
         Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
