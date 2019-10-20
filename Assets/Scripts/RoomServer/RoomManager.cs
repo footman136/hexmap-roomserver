@@ -79,7 +79,7 @@ public class RoomManager : MonoBehaviour
     /// 根据GUID获取19位的唯一数字序列  
     /// </summary>  
     /// <returns></returns>  
-    private static long GuidToLongId()
+    public static long GuidToLongId()
     {
         byte[] buffer = Guid.NewGuid().ToByteArray();
         return BitConverter.ToInt64(buffer, 0);

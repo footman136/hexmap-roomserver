@@ -43,6 +43,12 @@ public class RoomMsgReply
                 case ROOM.PlayerEnter:
                     PLAYER_ENTER(recvData);
                     break;
+                case ROOM.UploadMap:
+                    UPLOAD_MAP(recvData);
+                    break;
+                case ROOM.EnterRoom:
+                    ENTER_ROOM(recvData);
+                    break;
             }
         }
         catch (Exception e)
@@ -51,7 +57,7 @@ public class RoomMsgReply
         }
     }
 
-    public static void PLAYER_ENTER(byte[] bytes)
+    private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
         PlayerInfo pi = new PlayerInfo()
@@ -66,5 +72,74 @@ public class RoomMsgReply
             Ret = true,
         };
         RoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+    }
+
+    private static List<byte[]> mapDataBuffers = new List<byte[]>();
+    private static void UPLOAD_MAP(byte[] bytes)
+    {
+        // 这个消息会有好多组
+        UploadMap input = UploadMap.Parser.ParseFrom(bytes);
+        if (input.PackageIndex == 0)
+        {// 第一条此类消息
+            mapDataBuffers.Clear();                        
+        }
+        mapDataBuffers.Add(input.MapData.ToByteArray());
+        
+        bool ret = false;
+        long roomId = 0;
+        if (input.IsLastPackage)
+        {// 最后一条此类消息了
+            // 生成唯一ID
+            roomId = RoomManager.GuidToLongId();
+
+            int totalSize = 0;
+            foreach (var package in mapDataBuffers)
+            {
+                totalSize += package.Length;
+            }
+
+            byte[] totalMapData = new byte[totalSize];
+            int position = 0;
+            foreach (var package in mapDataBuffers)
+            {
+                Array.Copy(package, 0, totalMapData, position, package.Length);
+                position += package.Length;
+            }
+
+            PlayerInfo pi = null;
+            if (RoomManager.Instance.Players.ContainsKey(_args))
+            {
+                pi = RoomManager.Instance.Players[_args];
+            }
+
+            if (pi != null)
+            {
+                string tableName = "Maps";
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+
+                ret = true;
+                RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 保存地图数据成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+            }
+            else
+            {
+                RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
+            }
+        }
+        UploadMapReply output = new UploadMapReply()
+        {
+            Ret = ret,
+            IsLastPackage = input.IsLastPackage,
+            RoomId = roomId,
+        };
+        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.UploadMapReply, output.ToByteArray());
+    }
+
+    private static void ENTER_ROOM(byte[] bytes)
+    {
+        
     }
 }
