@@ -361,12 +361,17 @@ public class MicrosoftServer
         }
     }
 
-    public void Send(SocketAsyncEventArgs e, byte[] data, int size)
+    public void Send(SocketAsyncEventArgs e, byte[] bytes, int size)
     {
         AsyncUserToken token = (AsyncUserToken)e.UserToken;
         SocketAsyncEventArgs writeEventArgs = m_writePool.Pop();
         writeEventArgs.UserToken = token;
-        writeEventArgs.SetBuffer(data, 0, size);
+//        byte[] bytesRealSend = new byte[bytes.Length+4];
+//        byte[] bytesHeader = System.BitConverter.GetBytes(bytes.Length);
+//        Array.Copy(bytesHeader, 0, bytesRealSend, 0, 4);
+//        Array.Copy(bytes, 0, bytesRealSend, 4, bytes.Length);
+//        writeEventArgs.SetBuffer(bytesRealSend, 0, size);
+        writeEventArgs.SetBuffer(bytes, 0, size);
         bool willRaiseEvent = token.Socket.SendAsync(writeEventArgs);
         if (!willRaiseEvent)
         {
@@ -382,6 +387,9 @@ public class MicrosoftServer
         // close the socket associated with the client
         try
         {
+            //Console.WriteLine("A client has been disconnected from the server. There are {0} clients connected to the server", m_numConnectedSockets);
+            Completed?.Invoke(e, ServerSocketAction.Drop);
+            
             token.Socket.Shutdown(SocketShutdown.Send);
         }
         // throws if client process has already closed
@@ -395,8 +403,6 @@ public class MicrosoftServer
         m_readPool.Push(e);
         
         m_maxNumberAcceptedClients.Release();
-        //Console.WriteLine("A client has been disconnected from the server. There are {0} clients connected to the server", m_numConnectedSockets);
-        Completed?.Invoke(e, ServerSocketAction.Drop);
     }
 
     public void Log(string msg)
