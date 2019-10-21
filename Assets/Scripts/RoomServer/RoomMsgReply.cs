@@ -84,7 +84,8 @@ public class RoomMsgReply
         UploadMap input = UploadMap.Parser.ParseFrom(bytes);
         if (input.PackageIndex == 0)
         {// 第一条此类消息
-            mapDataBuffers.Clear();                        
+            mapDataBuffers.Clear();
+            RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 开始上传地图数据！地图名{input.RoomName}");
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
@@ -122,14 +123,14 @@ public class RoomMsgReply
             }
             else
             {
-                string tableName = $"MAP:{input.RoomName}_{roomId}";
+                string tableName = $"MAP:{roomId}";
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
 
-                RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 保存地图数据到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+                RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 上传地图数据，并保存到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
             }
         }
         UploadMapReply output = new UploadMapReply()
@@ -145,14 +146,14 @@ public class RoomMsgReply
     private static void DOWNLOAD_MAP(byte[] bytes)
     {
         DownloadMap input = DownloadMap.Parser.ParseFrom(bytes);
-        string tableName = $"MAP:{input.RoomName}_{input.RoomId}";
+        string tableName = $"MAP:{input.RoomId}";
         if (!RoomManager.Instance.Redis.CSRedis.Exists(tableName))
         {
             RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - Redis中没有找到地图表格 - {tableName}");
         }
         
         //////////////
-        // 校验地图的RoomId和RoomName是否和Redis中保存的一致        
+        // 校验地图的RoomId是否和Redis中保存的一致        
         long roomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId");
         if (roomId != input.RoomId)
         {
@@ -160,11 +161,6 @@ public class RoomMsgReply
             return;
         }
         string roomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName");
-        if (roomName != input.RoomName)
-        {
-            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！RoomName不匹配！传来的地图名:{input.RoomName} - Redis中保存的地图名:{roomName}");
-            return;
-        }
         
         //////////////
         // 计算这张地图是不是我自己创建的
@@ -176,7 +172,7 @@ public class RoomMsgReply
 
         if (pi == null)
         {
-            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！创建者没有找到！地图名:{input.RoomName}");
+            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！创建者没有找到！地图名:{roomName}");
             return;
         }
         long TokenId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
@@ -198,7 +194,7 @@ public class RoomMsgReply
         {
             DownloadMapReply output = new DownloadMapReply()
             {
-                RoomName = input.RoomName,
+                RoomName = roomName,
                 RoomId = input.RoomId,
                 MaxPlayerCount = maxPlayerCount,
                 IsCreatedByMe = IsCreateByMe,
@@ -217,7 +213,7 @@ public class RoomMsgReply
         {
             DownloadMapReply output = new DownloadMapReply()
             {
-                RoomName = input.RoomName,
+                RoomName = roomName,
                 RoomId = input.RoomId,
                 MaxPlayerCount = maxPlayerCount,
                 IsCreatedByMe = IsCreateByMe,
@@ -232,7 +228,7 @@ public class RoomMsgReply
             remainSize -= remainSize;
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
         }
-        RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图名:{input.RoomName} - Total Size:{totalSize}");
+        RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
     
     private static void ENTER_ROOM(byte[] bytes)
