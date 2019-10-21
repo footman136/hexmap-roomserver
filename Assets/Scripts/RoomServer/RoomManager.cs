@@ -188,7 +188,37 @@ public class RoomManager : MonoBehaviour
         transform.name = $"RoomManager - ({transform.childCount})";
     }
 
-    private void RemovePlayerFromRoom(SocketAsyncEventArgs args)
+    public void AddPlayer(SocketAsyncEventArgs args, PlayerInfo pi)
+    {
+        RoomManager.Instance.Players[args] = pi;
+    }
+    public void RemovePlayer(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = GetPlayer(args);
+        if (pi != null)
+        {
+            RemovePlayerFromRoom(args);
+            Players.Remove(args);
+        }
+    }
+
+    public PlayerInfo GetPlayer(SocketAsyncEventArgs args)
+    {
+        if (Players.ContainsKey(args))
+        {
+            PlayerInfo pi = Players[args];
+            return pi;
+        }
+
+        return null;
+    }
+
+    public void SetPlayerInfo(SocketAsyncEventArgs args, PlayerInfo playerInfo)
+    {
+        Players[args] = playerInfo;
+    }
+
+    public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
     {
         long roomId = -1;
         if (Players.ContainsKey(args))

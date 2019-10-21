@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Google.Protobuf;
+using Main;
 using Protobuf.Lobby;
 // https://blog.csdn.net/u014308482/article/details/52958148
 using Protobuf.Room;
@@ -75,7 +76,7 @@ public class RoomMsgReply
         {
             Enter = input,
         };
-        RoomManager.Instance.Players[_args] = pi;
+        RoomManager.Instance.AddPlayer(_args, pi);
         RoomManager.Instance.Log($"MSG: 玩家登录房间服务器 - {input.Account}");
 
         PlayerEnterReply output = new PlayerEnterReply()
@@ -276,10 +277,32 @@ public class RoomMsgReply
         { // 房间已经开启，只需要进入    
             roomLogic = RoomManager.Instance.Rooms[input.RoomId];
         }
-        if (roomLogic != null && RoomManager.Instance.Players.ContainsKey(_args))
+        if (roomLogic != null )
         {
-            PlayerInfo pi = RoomManager.Instance.Players[_args];
-            roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
+            PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
+            if (pi != null)
+            {
+                roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
+                pi.RoomId = input.RoomId;
+                RoomManager.Instance.SetPlayerInfo(_args, pi);
+            }
+            else
+            {
+                RoomManager.Instance.Log("MSG: ENTER_ROOM - 玩家没有找到！");
+            }
+            
+            // 通知大厅
+            UpdateRoomInfo output2 = new UpdateRoomInfo()
+            {
+                RoomId = roomLogic.RoomId,
+                RoomName = roomLogic.RoomName,
+                Creator = roomLogic.Creator,
+                CurPlayerCount    = roomLogic.CurPlayerCount,
+                MaxPlayerCount = roomLogic.MaxPlayerCount,
+                IsRunning = true,
+                IsRemove = false,
+            };
+            ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
         }
         EnterRoomReply output = new EnterRoomReply()
         {
@@ -299,12 +322,22 @@ public class RoomMsgReply
         }
         else
         {
-            if (RoomManager.Instance.Players.ContainsKey(_args))
+            RoomManager.Instance.RemovePlayer(_args);
+            RoomLogic roomLogic = RoomManager.Instance.Rooms[input.RoomId];
+            if (roomLogic != null)
             {
-                PlayerInfo pi = RoomManager.Instance.Players[_args];
-                //RoomManager.Instance.Rooms.Remove()
+                if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
+                {
+                    RoomManager.Instance.Rooms.Remove(input.RoomId);
+                    // 通知大厅：删除房间
+                    UpdateRoomInfo output2 = new UpdateRoomInfo()
+                    {
+                        RoomId = roomLogic.RoomId,
+                        IsRemove = true,
+                    };
+                    ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                }
             }
-            
         }
 
         ret = true;

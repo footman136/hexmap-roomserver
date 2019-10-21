@@ -18,7 +18,12 @@ public class RoomLogic : MonoBehaviour
 
     private Dictionary<SocketAsyncEventArgs, PlayerInfo> Players;
 
+    public string RoomName => _roomName;
+    public long RoomId => _roomId;
+    public int MaxPlayerCount => _maxPlayerCount;
     public int CurPlayerCount => Players.Count;
+    public long Creator => _creator;
+    
 
     private void Awake()
     {
@@ -59,6 +64,7 @@ public class RoomLogic : MonoBehaviour
             IsCreatedByMe = tokenId == _creator,
         };
         Players[args] = pi;
+        _curPlayerCount = Players.Count;
     }
 
     public void RemovePlayer(SocketAsyncEventArgs args)
@@ -71,6 +77,7 @@ public class RoomLogic : MonoBehaviour
         {
             RoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
         }
+        _curPlayerCount = Players.Count;
     }
 
     public void UpdateRoomInfoToLobby()

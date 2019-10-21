@@ -31,6 +31,9 @@ public class LobbyMsgReply
             case LOBBY_REPLY.RoomServerLoginReply:
                 ROOM_SERVER_LOGIN_REPLY(recvData);
                 break;
+            case LOBBY_REPLY.UpdateRoomInfoReply:
+                UPDATE_ROOM_INFO_REPLY(recvData);
+                break;
         }
     }
 
@@ -40,11 +43,20 @@ public class LobbyMsgReply
         if (input.Ret)
         {
             ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTED);
-            Debug.Log("MSG: 房间服务器登录成功！");
+            ClientManager.Instance.LobbyManager.Log("MSG: 房间服务器登录成功！");
         }
         else
         {
-            Debug.LogError("MSG: 房间服务器登录失败！");
+            ClientManager.Instance.LobbyManager.Log("MSG: 房间服务器登录失败！");
+        }
+    }
+
+    private static void UPDATE_ROOM_INFO_REPLY(byte[] bytes)
+    {
+        UpdateRoomInfoReply input = UpdateRoomInfoReply.Parser.ParseFrom(bytes);
+        if (!input.Ret)
+        {
+            ClientManager.Instance.LobbyManager.Log("MSG: 更新房间信息失败！");
         }
     }
 }
