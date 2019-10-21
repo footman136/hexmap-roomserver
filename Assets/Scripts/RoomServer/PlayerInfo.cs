@@ -12,6 +12,8 @@ public class PlayerInfo
 
     public bool IsInRoom;
 
-    public bool HasRoom;
-    
+    public bool IsCreatedByMe;
+
+    public long RoomId;
+
 }

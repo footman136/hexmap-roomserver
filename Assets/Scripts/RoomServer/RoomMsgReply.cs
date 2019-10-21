@@ -5,10 +5,15 @@ using UnityEngine;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Google.Protobuf;
+using Protobuf.Lobby;
 // https://blog.csdn.net/u014308482/article/details/52958148
 using Protobuf.Room;
-using UnityEditor;
-using UnityEditor.Build.Player;
+using UnityEngine.Experimental.PlayerLoop;
+using Object = UnityEngine.Object;
+using PlayerEnter = Protobuf.Room.PlayerEnter;
+using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
+using RoomInfo = Protobuf.Room.RoomInfo;
+
 
 // https://github.com/LitJSON/litjson
 public class RoomMsgReply
@@ -51,6 +56,9 @@ public class RoomMsgReply
                     break;
                 case ROOM.EnterRoom:
                     ENTER_ROOM(recvData);
+                    break;
+                case ROOM.LeaveRoom:
+                    LEAVE_ROOM(recvData);
                     break;
             }
         }
@@ -233,6 +241,77 @@ public class RoomMsgReply
     
     private static void ENTER_ROOM(byte[] bytes)
     {
-        
+        EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
+        RoomLogic roomLogic = null;
+        if (!RoomManager.Instance.Rooms.ContainsKey(input.RoomId))
+        { // 房间没有开启，需要开启并进入
+            var go = Resources.Load("Prefabs/RoomLogic");
+            if (go != null)
+            {
+                var go2 = Object.Instantiate(go, RoomManager.Instance.transform) as GameObject;
+                if (go2 != null)
+                {
+                    roomLogic = go2.GetComponent<RoomLogic>();
+                    if (roomLogic != null)
+                    {
+                        string tableName = $"MAP:{input.RoomId}";
+                        long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
+                        RoomInfo roomInfo = new RoomInfo()
+                        {
+                            RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
+                            MaxPlayerCount =
+                                RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
+                            RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
+                            Creator = createrId,
+                        };
+                        roomLogic.Init(roomInfo);
+                        RoomManager.Instance.Rooms.Add(roomInfo.RoomId, roomLogic);
+                        go2.name = $"RoomLogic - {roomInfo.RoomName}";
+                        RoomManager.Instance.UpdateName();
+                    }
+                }
+            }
+        }
+        else
+        { // 房间已经开启，只需要进入    
+            roomLogic = RoomManager.Instance.Rooms[input.RoomId];
+        }
+        if (roomLogic != null && RoomManager.Instance.Players.ContainsKey(_args))
+        {
+            PlayerInfo pi = RoomManager.Instance.Players[_args];
+            roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
+        }
+        EnterRoomReply output = new EnterRoomReply()
+        {
+            Ret = true,
+        };
+        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+    }
+
+    private static void LEAVE_ROOM(byte[] bytes)
+    {
+        LeaveRoom input = LeaveRoom.Parser.ParseFrom(bytes);
+
+        bool ret = false;
+        if (!RoomManager.Instance.Rooms.ContainsKey(input.RoomId))
+        {
+            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - room not found! RoomId:{input.RoomId}");
+        }
+        else
+        {
+            if (RoomManager.Instance.Players.ContainsKey(_args))
+            {
+                PlayerInfo pi = RoomManager.Instance.Players[_args];
+                //RoomManager.Instance.Rooms.Remove()
+            }
+            
+        }
+
+        ret = true;
+        LeaveRoomReply output = new LeaveRoomReply()
+        {
+            Ret = ret,
+        };
+        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
     }
 }

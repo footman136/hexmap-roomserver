@@ -21,7 +21,7 @@ public class RoomManager : MonoBehaviour
     public Dictionary<SocketAsyncEventArgs, PlayerInfo> Players { set; get; }
     
     // 房间的集合，Key是房间的唯一ID
-    public Dictionary<long, RoomInfo> Rooms { set; get; }
+    public Dictionary<long, RoomLogic> Rooms { set; get; }
 
     public string ServerName;
     public long ServerId;
@@ -37,7 +37,9 @@ public class RoomManager : MonoBehaviour
         }
         Instance = this;
         Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
-        Rooms = new Dictionary<long, RoomInfo>();
+        Rooms = new Dictionary<long, RoomLogic>();
+        _server = GetComponent<ServerScript>();
+        _redis = GetComponent<RedisManager>();
     }
 
     #region 初始化
@@ -172,11 +174,31 @@ public class RoomManager : MonoBehaviour
         if (Players.ContainsKey(args))
         {
             Log($"MSG: 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
+            RemovePlayerFromRoom(args);
             Players.Remove(args);
         }
         else
         {
             Log("MSG: RoomServer - Reomve Player failed - Player not found!");
+        }
+    }
+
+    public void UpdateName()
+    {
+        transform.name = $"RoomManager - ({transform.childCount})";
+    }
+
+    private void RemovePlayerFromRoom(SocketAsyncEventArgs args)
+    {
+        long roomId = -1;
+        if (Players.ContainsKey(args))
+        {
+            roomId = Players[args].RoomId;
+        }
+
+        if (roomId != -1)
+        {
+            Rooms[roomId].RemovePlayer(args);
         }
     }
 }
