@@ -48,7 +48,7 @@ public class ClientScript : MonoBehaviour
             _client.Close();
         }
 
-        Debug.Log("Client closed!");
+        Log("Client closed!");
     }
 
     protected void Update()
@@ -70,6 +70,11 @@ public class ClientScript : MonoBehaviour
             }
 
         }
+    }
+
+    public void Log(string msg)
+    {
+        _client.Log(msg);
     }
 
     public void SendMsg(byte[] data)

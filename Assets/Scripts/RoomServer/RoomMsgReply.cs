@@ -88,7 +88,7 @@ public class RoomMsgReply
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
-        bool ret = false;
+        bool ret = true;
         long roomId = 0;
         if (input.IsLastPackage)
         {// 最后一条此类消息了
@@ -117,18 +117,20 @@ public class RoomMsgReply
 
             if (pi == null)
             {
+                ret = false;
                 RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
-                return;
             }
-            string tableName = $"{input.RoomName}_{roomId}";
-            RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
-            RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
-            RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
-            RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
-            RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+            else
+            {
+                string tableName = $"MAP:{input.RoomName}_{roomId}";
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
 
-            ret = true;
-            RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 保存地图数据到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+                RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 保存地图数据到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+            }
         }
         UploadMapReply output = new UploadMapReply()
         {
@@ -143,7 +145,7 @@ public class RoomMsgReply
     private static void DOWNLOAD_MAP(byte[] bytes)
     {
         DownloadMap input = DownloadMap.Parser.ParseFrom(bytes);
-        string tableName = $"{input.RoomName}_{input.RoomId}";
+        string tableName = $"MAP:{input.RoomName}_{input.RoomId}";
         if (!RoomManager.Instance.Redis.CSRedis.Exists(tableName))
         {
             RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - Redis中没有找到地图表格 - {tableName}");
@@ -206,6 +208,7 @@ public class RoomMsgReply
             };
             byte[] sendBytes = new byte[CHUNK_SIZE];
             Array.Copy(totalData, position, sendBytes, 0, CHUNK_SIZE);
+            output.MapData = ByteString.CopyFrom(sendBytes);
             position += CHUNK_SIZE;
             remainSize -= CHUNK_SIZE;
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
@@ -224,6 +227,7 @@ public class RoomMsgReply
             };
             byte[] sendBytes = new byte[remainSize];
             Array.Copy(totalData, position, sendBytes, 0, remainSize);
+            output.MapData = ByteString.CopyFrom(sendBytes);
             position += remainSize;
             remainSize -= remainSize;
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
