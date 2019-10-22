@@ -344,40 +344,60 @@ public class RoomMsgReply
         { // 房间已经开启，只需要进入    
             roomLogic = RoomManager.Instance.Rooms[input.RoomId];
         }
+
+        bool ret = false;
+        string errMsg = "";
         if (roomLogic != null )
         {
             PlayerInfo pi = RoomManager.Instance.GetPlayer(args);
             if (pi != null)
             {
+                ret = true;
                 roomLogic.AddPlayer(args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
                 RoomManager.Instance.SetPlayerInfo(args, pi);
+            
+                // 通知大厅
+                UpdateRoomInfo output2 = new UpdateRoomInfo()
+                {
+                    RoomId = roomLogic.RoomId,
+                    RoomName = roomLogic.RoomName,
+                    Creator = roomLogic.Creator,
+                    CurPlayerCount    = roomLogic.CurPlayerCount,
+                    MaxPlayerCount = roomLogic.MaxPlayerCount,
+                    IsRunning = true,
+                    IsRemove = false,
+                };
+                ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                // 返回成功
+                EnterRoomReply output = new EnterRoomReply()
+                {
+                    Ret = true,
+                    RoomId = roomLogic.RoomId,
+                    RoomName = roomLogic.RoomName,
+                };
+                RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+                RoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
+                return;
             }
             else
             {
-                RoomManager.Instance.Log("MSG: ENTER_ROOM - 玩家没有找到！");
+                errMsg = "玩家没有找到！";
             }
-            RoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
-            
-            // 通知大厅
-            UpdateRoomInfo output2 = new UpdateRoomInfo()
-            {
-                RoomId = roomLogic.RoomId,
-                RoomName = roomLogic.RoomName,
-                Creator = roomLogic.Creator,
-                CurPlayerCount    = roomLogic.CurPlayerCount,
-                MaxPlayerCount = roomLogic.MaxPlayerCount,
-                IsRunning = true,
-                IsRemove = false,
-            };
-            ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
         }
-        EnterRoomReply output = new EnterRoomReply()
+        else
         {
-            Ret = true,
-            RoomName = roomLogic.RoomName,
-        };
-        RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+            errMsg = "房间没有找到！";
+        }
+        {   // 返回失败
+            EnterRoomReply output = new EnterRoomReply()
+            {
+                Ret = false,
+                ErrMsg = errMsg,
+            };
+            RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+            RoomManager.Instance.Log("MSG: ENTER_ROOM - "+errMsg);
+        }
     }
 
     private static void LEAVE_ROOM(SocketAsyncEventArgs args, byte[] bytes)
@@ -391,12 +411,13 @@ public class RoomMsgReply
         }
         else
         {
-            
+            ret = true;
             RoomLogic roomLogic = RoomManager.Instance.Rooms[input.RoomId];
             if (roomLogic != null)
             {
                 string account = RoomManager.Instance.GetPlayer(args)?.Enter.Account;
                 RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
+                RoomManager.Instance.RemovePlayer(args);
                 if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
                 {
                     RoomManager.Instance.Rooms.Remove(input.RoomId);
@@ -409,10 +430,8 @@ public class RoomMsgReply
                     ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
                 }
             }
-            RoomManager.Instance.RemovePlayer(args);
         }
 
-        ret = true;
         LeaveRoomReply output = new LeaveRoomReply()
         {
             Ret = ret,
