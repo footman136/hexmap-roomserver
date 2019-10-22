@@ -35,11 +35,13 @@ public class RoomManager : MonoBehaviour
         {
             Debug.LogError("RoomManager is Singleton! Cannot be created again!");
         }
+
         Instance = this;
         Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
         Rooms = new Dictionary<long, RoomLogic>();
         _server = GetComponent<ServerScript>();
         _redis = GetComponent<RedisManager>();
+        RoomMsgReply.Init();
     }
 
     #region 初始化
@@ -103,6 +105,11 @@ public class RoomManager : MonoBehaviour
     {
         receive_str = msg;
         _server.Log(msg);
+    }
+
+    public void Update()
+    {
+        RoomMsgReply.ProcessObjMsg();
     }
     
     #endregion
@@ -231,4 +238,5 @@ public class RoomManager : MonoBehaviour
             Rooms[roomId].RemovePlayer(args);
         }
     }
+
 }

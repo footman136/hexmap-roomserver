@@ -21,12 +21,34 @@ public class RoomMsgReply
 {
     private static SocketAsyncEventArgs _args;
     
+    // 只能放到主线程来执行的消息链表
+    private static object _lockObj;
+
+    public struct ObjMsgDefine
+    {
+        public SocketAsyncEventArgs _args;
+        public byte[] _bytes;
+        public int _size;
+    };
+    public static List<ObjMsgDefine> _objectMsgList;
+
+    #region 消息分发
+
+    public static void Init()
+    {
+        _lockObj = new object();
+        lock (_lockObj)
+        {
+            _objectMsgList = new List<ObjMsgDefine>();
+        }
+    }
+    
     /// <summary>
     /// 处理服务器接收到的消息
     /// </summary>
     /// <param name="args"></param>
     /// <param name="content"></param>
-    public static void ProcessMsg(SocketAsyncEventArgs args, byte[] data, int size)
+    public static void ProcessMsg(SocketAsyncEventArgs args, byte[] bytes, int size)
     {
         try
         {
@@ -37,13 +59,10 @@ public class RoomMsgReply
             }
 
             _args = args;
-
-            byte[] recvHeader = new byte[4];
-            Array.Copy(data, 0, recvHeader, 0, 4);
             byte[] recvData = new byte[size - 4];
-            Array.Copy(data, 4, recvData, 0, size - 4);
+            Array.Copy(bytes, 4, recvData, 0, size - 4);
 
-            int msgId = BitConverter.ToInt32(recvHeader, 0);
+            int msgId = ParseMsgId(bytes);
             switch ((ROOM) msgId)
             {
                 case ROOM.PlayerEnter:
@@ -56,10 +75,10 @@ public class RoomMsgReply
                     DOWNLOAD_MAP(recvData);
                     break;
                 case ROOM.EnterRoom:
-                    ENTER_ROOM(recvData);
+                    AddObjMsg(args, bytes, size);
                     break;
                 case ROOM.LeaveRoom:
-                    LEAVE_ROOM(recvData);
+                    AddObjMsg(args, bytes, size);
                     break;
             }
         }
@@ -69,6 +88,62 @@ public class RoomMsgReply
         }
     }
 
+    private static int ParseMsgId(byte[] bytes)
+    {
+        byte[] recvHeader = new byte[4];
+        Array.Copy(bytes, 0, recvHeader, 0, 4);
+        int msgId = BitConverter.ToInt32(recvHeader, 0);
+        return msgId;
+    }
+
+    /// <summary>
+    /// 凡是需要主线程处理的消息走这里。因为不是所有的消息都需要走主线程，所以做出区分（有的消息甚至不能放到主线程）
+    /// </summary>
+    /// <param name="args">注意：因为跨线程了，所以这个参数有可能失效</param>
+    /// <param name="bytes"></param>
+    public static void AddObjMsg(SocketAsyncEventArgs args, byte[] bytes, int size)
+    {
+        lock (_lockObj)
+        {
+            ObjMsgDefine objMsg = new ObjMsgDefine()
+            {
+                _args = args,
+                _bytes = bytes,
+                _size = size,
+            };
+            _objectMsgList.Add(objMsg);
+        }
+    }
+
+    public static void ProcessObjMsg()
+    {
+        lock (_lockObj)
+        {
+            while (_objectMsgList.Count > 0)
+            {
+                ObjMsgDefine objMsg = _objectMsgList[0];
+                
+                byte[] recvData = new byte[objMsg._size - 4];
+                Array.Copy(objMsg._bytes, 4, recvData, 0, objMsg._size - 4);
+                
+                int MsgId = ParseMsgId(objMsg._bytes);
+                switch ((ROOM) MsgId)
+                {
+                    case ROOM.EnterRoom:
+                        ENTER_ROOM(objMsg._args, recvData);
+                        break;
+                    case ROOM.LeaveRoom:
+                        LEAVE_ROOM(objMsg._args, recvData);
+                        break;
+                }
+                
+                _objectMsgList.RemoveAt(0);
+            }
+        }
+    }
+    #endregion
+    
+    #region 立即消息处理
     private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
@@ -98,7 +173,7 @@ public class RoomMsgReply
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
-        bool ret = true;
+        bool ret = false;
         long roomId = 0;
         if (input.IsLastPackage)
         {// 最后一条此类消息了
@@ -119,19 +194,14 @@ public class RoomMsgReply
                 position += package.Length;
             }
 
-            PlayerInfo pi = null;
-            if (RoomManager.Instance.Players.ContainsKey(_args))
-            {
-                pi = RoomManager.Instance.Players[_args];
-            }
-
+            PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
             if (pi == null)
             {
-                ret = false;
                 RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
             }
             else
             {
+                ret = true;
                 string tableName = $"MAP:{roomId}";
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
@@ -173,12 +243,7 @@ public class RoomMsgReply
         
         //////////////
         // 计算这张地图是不是我自己创建的
-        PlayerInfo pi = null;
-        if (RoomManager.Instance.Players.ContainsKey(_args))
-        {
-            pi = RoomManager.Instance.Players[_args];
-        }
-
+        PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
         if (pi == null)
         {
             RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！创建者没有找到！地图名:{roomName}");
@@ -239,8 +304,10 @@ public class RoomMsgReply
         }
         RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
+    #endregion
     
-    private static void ENTER_ROOM(byte[] bytes)
+    #region 主线程消息处理
+    private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
     {
         EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
         RoomLogic roomLogic = null;
@@ -266,8 +333,8 @@ public class RoomMsgReply
                             Creator = createrId,
                         };
                         roomLogic.Init(roomInfo);
+                        roomLogic.name = $"RoomLogic - {roomInfo.RoomName}";
                         RoomManager.Instance.Rooms.Add(roomInfo.RoomId, roomLogic);
-                        go2.name = $"RoomLogic - {roomInfo.RoomName}";
                         RoomManager.Instance.UpdateName();
                     }
                 }
@@ -279,17 +346,18 @@ public class RoomMsgReply
         }
         if (roomLogic != null )
         {
-            PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
+            PlayerInfo pi = RoomManager.Instance.GetPlayer(args);
             if (pi != null)
             {
-                roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
+                roomLogic.AddPlayer(args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
-                RoomManager.Instance.SetPlayerInfo(_args, pi);
+                RoomManager.Instance.SetPlayerInfo(args, pi);
             }
             else
             {
                 RoomManager.Instance.Log("MSG: ENTER_ROOM - 玩家没有找到！");
             }
+            RoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
             
             // 通知大厅
             UpdateRoomInfo output2 = new UpdateRoomInfo()
@@ -307,11 +375,12 @@ public class RoomMsgReply
         EnterRoomReply output = new EnterRoomReply()
         {
             Ret = true,
+            RoomName = roomLogic.RoomName,
         };
-        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+        RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
     }
 
-    private static void LEAVE_ROOM(byte[] bytes)
+    private static void LEAVE_ROOM(SocketAsyncEventArgs args, byte[] bytes)
     {
         LeaveRoom input = LeaveRoom.Parser.ParseFrom(bytes);
 
@@ -322,10 +391,12 @@ public class RoomMsgReply
         }
         else
         {
-            RoomManager.Instance.RemovePlayer(_args);
+            
             RoomLogic roomLogic = RoomManager.Instance.Rooms[input.RoomId];
             if (roomLogic != null)
             {
+                string account = RoomManager.Instance.GetPlayer(args)?.Enter.Account;
+                RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
                 if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
                 {
                     RoomManager.Instance.Rooms.Remove(input.RoomId);
@@ -338,6 +409,7 @@ public class RoomMsgReply
                     ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
                 }
             }
+            RoomManager.Instance.RemovePlayer(args);
         }
 
         ret = true;
@@ -345,6 +417,7 @@ public class RoomMsgReply
         {
             Ret = ret,
         };
-        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
+        RoomManager.Instance.SendMsg(args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
     }
+    #endregion
 }
