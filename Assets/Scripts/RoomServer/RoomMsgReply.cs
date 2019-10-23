@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 using PlayerEnter = Protobuf.Room.PlayerEnter;
 using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
 using RoomInfo = Protobuf.Room.RoomInfo;
-
+using GameUtils;
 
 // https://github.com/LitJSON/litjson
 public class RoomMsgReply
@@ -75,10 +75,14 @@ public class RoomMsgReply
                     DOWNLOAD_MAP(recvData);
                     break;
                 case ROOM.EnterRoom:
-                    AddObjMsg(args, bytes, size);
+                    ENTER_ROOM(_args, recvData);
                     break;
                 case ROOM.LeaveRoom:
-                    AddObjMsg(args, bytes, size);
+                    LEAVE_ROOM(_args, recvData);
+                    break;
+                default:
+                    // 通用消息处理器，别的地方要想响应找个消息，应该调用MsgDispatcher.RegisterMsg()来注册消息处理事件
+                    MsgDispatcher.ProcessMsg(args, bytes, size);
                     break;
             }
         }
@@ -95,55 +99,9 @@ public class RoomMsgReply
         int msgId = BitConverter.ToInt32(recvHeader, 0);
         return msgId;
     }
-
-    /// <summary>
-    /// 凡是需要主线程处理的消息走这里。因为不是所有的消息都需要走主线程，所以做出区分（有的消息甚至不能放到主线程）
-    /// </summary>
-    /// <param name="args">注意：因为跨线程了，所以这个参数有可能失效</param>
-    /// <param name="bytes"></param>
-    public static void AddObjMsg(SocketAsyncEventArgs args, byte[] bytes, int size)
-    {
-        lock (_lockObj)
-        {
-            ObjMsgDefine objMsg = new ObjMsgDefine()
-            {
-                _args = args,
-                _bytes = bytes,
-                _size = size,
-            };
-            _objectMsgList.Add(objMsg);
-        }
-    }
-
-    public static void ProcessObjMsg()
-    {
-        lock (_lockObj)
-        {
-            while (_objectMsgList.Count > 0)
-            {
-                ObjMsgDefine objMsg = _objectMsgList[0];
-                
-                byte[] recvData = new byte[objMsg._size - 4];
-                Array.Copy(objMsg._bytes, 4, recvData, 0, objMsg._size - 4);
-                
-                int MsgId = ParseMsgId(objMsg._bytes);
-                switch ((ROOM) MsgId)
-                {
-                    case ROOM.EnterRoom:
-                        ENTER_ROOM(objMsg._args, recvData);
-                        break;
-                    case ROOM.LeaveRoom:
-                        LEAVE_ROOM(objMsg._args, recvData);
-                        break;
-                }
-                
-                _objectMsgList.RemoveAt(0);
-            }
-        }
-    }
     #endregion
     
-    #region 立即消息处理
+    #region 消息处理
     private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
@@ -178,7 +136,7 @@ public class RoomMsgReply
         if (input.IsLastPackage)
         {// 最后一条此类消息了
             // 生成唯一ID
-            roomId = RoomManager.GuidToLongId();
+            roomId = Utils.GuidToLongId();
 
             int totalSize = 0;
             foreach (var package in mapDataBuffers)
@@ -304,40 +262,29 @@ public class RoomMsgReply
         }
         RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
-    #endregion
     
-    #region 主线程消息处理
     private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
     {
         EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
         RoomLogic roomLogic = null;
         if (!RoomManager.Instance.Rooms.ContainsKey(input.RoomId))
         { // 房间没有开启，需要开启并进入
-            var go = Resources.Load("Prefabs/RoomLogic");
-            if (go != null)
+            roomLogic = new RoomLogic();
+            if (roomLogic != null)
             {
-                var go2 = Object.Instantiate(go, RoomManager.Instance.transform) as GameObject;
-                if (go2 != null)
+                string tableName = $"MAP:{input.RoomId}";
+                long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
+                RoomInfo roomInfo = new RoomInfo()
                 {
-                    roomLogic = go2.GetComponent<RoomLogic>();
-                    if (roomLogic != null)
-                    {
-                        string tableName = $"MAP:{input.RoomId}";
-                        long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
-                        RoomInfo roomInfo = new RoomInfo()
-                        {
-                            RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
-                            MaxPlayerCount =
-                                RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
-                            RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
-                            Creator = createrId,
-                        };
-                        roomLogic.Init(roomInfo);
-                        roomLogic.name = $"RoomLogic - {roomInfo.RoomName}";
-                        RoomManager.Instance.Rooms.Add(roomInfo.RoomId, roomLogic);
-                        RoomManager.Instance.UpdateName();
-                    }
-                }
+                    RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
+                    MaxPlayerCount =
+                        RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
+                    RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
+                    Creator = createrId,
+                };
+                // 初始化
+                roomLogic.Init(roomInfo);
+                RoomManager.Instance.Rooms.Add(roomInfo.RoomId, roomLogic);
             }
         }
         else
@@ -420,6 +367,7 @@ public class RoomMsgReply
                 RoomManager.Instance.RemovePlayer(args);
                 if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
                 {
+                    roomLogic.Fini(); // 结束化
                     RoomManager.Instance.Rooms.Remove(input.RoomId);
                     // 通知大厅：删除房间
                     UpdateRoomInfo output2 = new UpdateRoomInfo()

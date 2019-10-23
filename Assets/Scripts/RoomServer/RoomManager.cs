@@ -50,7 +50,6 @@ public class RoomManager : MonoBehaviour
     {
         _server.Received += OnReceive;
         _server.Completed += OnComplete;
-        _server.Log("RoomManager Started!");
 
         StartCoroutine(WaitForReady());
     }
@@ -69,7 +68,7 @@ public class RoomManager : MonoBehaviour
         }
         
         ServerName = $"{_server.Address}:{_server.Port}";
-        ServerId = GuidToLongId(); // 生成唯一ID
+        ServerId = GameUtils.Utils.GuidToLongId(); // 生成唯一ID
         MaxRoomCount = 5;
         CurRoomCount = 0;
         MaxPlayerPerRoom = 30;
@@ -79,16 +78,6 @@ public class RoomManager : MonoBehaviour
         ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
     }
 
-    /// <summary>  
-    /// 根据GUID获取19位的唯一数字序列  
-    /// </summary>  
-    /// <returns></returns>  
-    public static long GuidToLongId()
-    {
-        byte[] buffer = Guid.NewGuid().ToByteArray();
-        return BitConverter.ToInt64(buffer, 0);
-    }
-    
     void OnGUI()
     {
         if (receive_str != null)
@@ -107,9 +96,9 @@ public class RoomManager : MonoBehaviour
         _server.Log(msg);
     }
 
-    public void Update()
+    void Update()
     {
-        RoomMsgReply.ProcessObjMsg();
+        UpdateName();
     }
     
     #endregion
