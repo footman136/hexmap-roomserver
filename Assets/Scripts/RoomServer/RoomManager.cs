@@ -7,6 +7,7 @@ using System;
 using LitJson;
 using Main;
 using Protobuf.Room;
+using Actor;
 
 public class RoomManager : MonoBehaviour
 {

@@ -15,6 +15,7 @@ using PlayerEnter = Protobuf.Room.PlayerEnter;
 using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
 using RoomInfo = Protobuf.Room.RoomInfo;
 using GameUtils;
+using Actor;
 
 // https://github.com/LitJSON/litjson
 public class RoomMsgReply

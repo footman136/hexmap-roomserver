@@ -5,6 +5,8 @@ using GameUtils;
 using Google.Protobuf;
 using Protobuf.Room;
 using UnityEngine;
+using Actor;
+using UnityEditorInternal;
 
 public class RoomLogic
 {
@@ -25,6 +27,8 @@ public class RoomLogic
     public int MaxPlayerCount => _maxPlayerCount;
     public int CurPlayerCount => Players.Count;
     public long Creator => _creator;
+    
+    
 
     #region 初始化
     
@@ -47,12 +51,14 @@ public class RoomLogic
     {
         MsgDispatcher.RegisterMsg((int)ROOM.CreateAtroop, OnCreateATroop);
         MsgDispatcher.RegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
+        MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
     }
 
     public void RemoveListener()
     {
         MsgDispatcher.UnRegisterMsg((int)ROOM.CreateAtroop, OnCreateATroop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
     }
     
     #endregion
@@ -87,6 +93,16 @@ public class RoomLogic
         }
         _curPlayerCount = Players.Count;
     }
+
+    public PlayerInfo GetPlayer(SocketAsyncEventArgs args)
+    {
+        if (Players.ContainsKey(args))
+        {
+            return Players[args];
+        }
+
+        return null;
+    }
     
     #endregion
 
@@ -113,24 +129,46 @@ public class RoomLogic
         // 放在哪里都可以，目前放在这里是因为可以测试一下，同一条消息，多个函数注册是否会有BUG
         if (input.RoomId != _roomId)
             return;
-        // 转发给房间内的所有玩家
-        CreateATroopReply output = new CreateATroopReply()
+
+        if (!Players.ContainsKey(args))
         {
-            Ret = true,
-            ActorId = input.ActorId,
-            Orientation = input.Orientation,
-            OwnerId = input.OwnerId,
-            PosX = input.PosX,
-            PosZ = input.PosZ,
-            Species = input.Species,
-        };
-        BroadcastMsg(ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+            CreateATroopReply output = new CreateATroopReply()
+            {
+                Ret = false,
+            };
+            RoomManager.Instance.SendMsg(args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+            RoomManager.Instance.Log($"MSG: CreateATroop - 当前玩家不在本房间！房间名:{RoomName} - 玩家个数:{Players.Count}");
+        }
+        else
+        {
+
+            PlayerInfo pi = GetPlayer(args);
+            if (pi != null)
+            {
+                pi._actorManager.AddActor(input.RoomId, input.OwnerId, input.ActorId, input.PosX, input.PosZ,
+                    input.Orientation, input.Species);
+            }
+            
+            // 转发给房间内的所有玩家
+            CreateATroopReply output = new CreateATroopReply()
+            {
+                Ret = true,
+                ActorId = input.ActorId,
+                Orientation = input.Orientation,
+                OwnerId = input.OwnerId,
+                PosX = input.PosX,
+                PosZ = input.PosZ,
+                Species = input.Species,
+            };
+            BroadcastMsg(ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+        }
     }
     void OnDestroyATroop(SocketAsyncEventArgs args, byte[] bytes)
     {
         DestroyATroop input = DestroyATroop.Parser.ParseFrom(bytes);
         if (input.RoomId != _roomId)
             return;
+        
         DestroyATroopReply output = new DestroyATroopReply()
         {
             ActorId = input.ActorId,
@@ -140,5 +178,26 @@ public class RoomLogic
         BroadcastMsg(ROOM_REPLY.DestroyAtroopReply, output.ToByteArray());
     }
     
+    private void OnTroopMove(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        TroopMove input = TroopMove.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        
+        TroopMoveReply output = new TroopMoveReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            PosFromX = input.PosFromX,
+            PosFromZ = input.PosFromZ,
+            PosToX = input.PosToX,
+            PosToZ = input.PosToZ,
+            Speed = input.Speed,
+            Ret = true,
+        };
+        BroadcastMsg(ROOM_REPLY.TroopMoveReply, output.ToByteArray());
+    }
+        
     #endregion
 }

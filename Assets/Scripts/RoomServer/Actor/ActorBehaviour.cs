@@ -1,72 +1,71 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Sockets;
+using GameUtils;
 using JetBrains.Annotations;
+using Protobuf.Lobby;
+using Protobuf.Room;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace Animation
+namespace Actor
 {
-    public class ActorBehaviour : MonoBehaviour
+    public class ActorBehaviour
     {
         
         #region 成员
         
-        public long ActorId;
-        public long OwnerActorId;
-        
-        [Space(), Header("AI"), Space(5)] 
-        [SerializeField]
-        private string _species = "NA";
-        public string Species => _species;
-
-        [SerializeField, Tooltip("This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)")]
+        //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
 
         public StateMachineActor StateMachine;
-        [SerializeField] private FSMStateActor.StateEnum _currentAiState; // AI的状态
-        [SerializeField] private Vector3 _targetPosition;
-        [SerializeField] private float _distance;
-        
-        [Space(), Header("Debug"), Space(5)]
-        [SerializeField, Tooltip("If true, AI changes to this animal will be logged in the console.")]
+        private Vector3 _targetPosition;
+        private Vector3 _currentPosition;
+        private float _distance;
+        private float TIME_DELAY;
+
+        private long _roomId;
+        private long _ownerId;
+        private long _actorId;
+        private int _posX;
+        private int _posZ;
+        private float _orientation;
+        private string _species;
+
+        public long RoomId => _roomId;
+        public long OwnerId => _ownerId;
+        public long ActorId => _actorId;
+        public string Species => _species;
+
+        //If true, AI changes to this animal will be logged in the console.
         private bool _logChanges = false;
         
-        private Animator animator;
-        
-        private static Dictionary<long, ActorBehaviour> _allActors = new Dictionary<long, ActorBehaviour>();
-        public static Dictionary<long, ActorBehaviour> AllActors => _allActors;
-
         #endregion
         
         #region 标准函数
 
-        private void Awake()
-        {
-            animator = GetComponent<Animator>();
-            animator.applyRootMotion = false;
-            
-        }
-
         // Start is called before the first frame update
-        void Start()
+        public ActorBehaviour(long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string species)
         {
-            _allActors.Add(ActorId, this);
-            _species = ScriptableActorStats.species;
-            StartCoroutine(Running());
-        }
-
-        private void OnDestroy()
-        {
-            StopAllCoroutines();        
+            _species = species;
+            TIME_DELAY = 1f;
+            _roomId = roomId;
+            _ownerId = ownerId;
+            _actorId = actorId;
+            _posX = posX;
+            _posZ = posZ;
+            _orientation = orientation;
+            _species = species;
         }
 
         // Update is called once per frame
-        private float TIME_DELAY = 0.03f;
         private float timeNow = 0;
         void Update()
         {
-            _distance = Vector3.Distance(transform.position, _targetPosition);
+            _distance = Vector3.Distance(_currentPosition, _targetPosition);
+            StateMachine.Tick();
+            
             timeNow += Time.deltaTime;
             if (timeNow < TIME_DELAY)
             {
@@ -75,18 +74,16 @@ namespace Animation
 
             timeNow = 0;
         
-            _currentAiState = StateMachine.CurrentState;
-            StateMachine.Tick();
+            // AI的执行频率要低一些
+            AI_Running();
         }
 
-        void OnEnable()
+        public void Init()
         {
-            
         }
 
-        void OnDisable()
+        public void Fini()
         {
-            
         }
         
         public void Log(string msg)
