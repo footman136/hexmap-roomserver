@@ -132,7 +132,7 @@ public class RoomMsgReply
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
-        bool ret = false;
+        bool ret = true;
         long roomId = 0;
         if (input.IsLastPackage)
         {// 最后一条此类消息了
@@ -157,6 +157,7 @@ public class RoomMsgReply
             if (pi == null)
             {
                 RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
+                ret = false;
             }
             else
             {
@@ -314,6 +315,24 @@ public class RoomMsgReply
             remainSize -= remainSize;
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
         }
+        
+        // 最后一件事：把房间内已有的所有actor都发给本人
+        foreach (var keyValue in ActorManager.AllActors)
+        {
+            // 转发给房间内的所有玩家
+            CreateATroopReply output = new CreateATroopReply()
+            {
+                Ret = true,
+                ActorId = keyValue.Value.ActorId,
+                Orientation = keyValue.Value.Orientation,
+                OwnerId = keyValue.Value.OwnerId,
+                PosX = keyValue.Value.PosX,
+                PosZ = keyValue.Value.PosZ,
+                Species = keyValue.Value.Species,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+        }
+        
         RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
     
@@ -421,15 +440,37 @@ public class RoomMsgReply
                 RoomManager.Instance.RemovePlayer(args);
                 if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
                 {
-                    roomLogic.Fini(); // 结束化
-                    RoomManager.Instance.Rooms.Remove(input.RoomId);
-                    // 通知大厅：删除房间
-                    UpdateRoomInfo output2 = new UpdateRoomInfo()
+                    if (input.ReleaseIfNoUser)
                     {
-                        RoomId = roomLogic.RoomId,
-                        IsRemove = true,
-                    };
-                    ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                        roomLogic.Fini(); // 结束化
+                        RoomManager.Instance.Rooms.Remove(input.RoomId);
+                        // 通知大厅：删除房间
+                        UpdateRoomInfo output2 = new UpdateRoomInfo()
+                        {
+                            RoomId = roomLogic.RoomId,
+                            IsRemove = true,
+                        };
+                        ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                    }
+                    else
+                    {
+                        // 存盘这个事情先放一放，因为：
+                        // 1，服务器目前还没有全部的地图数据
+                        // 2，里面的Actor我想单独写地方来保存，而不是用它原有的结构。因为未来游戏主要会在这里进行拓展
+                        // Oct.24.2019. Liu Gang. 
+//                        int size = 256 * 1024;
+//                        byte[] totalMapData = new byte[size];
+//                        roomLogic._hexmapHelper.Save(ref totalMapData, ref size);
+//                        // 存盘
+//                        string tableName = $"MAP:{roomLogic.RoomId}";
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", roomLogic.Creator);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomLogic.RoomId);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", roomLogic.RoomName);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", roomLogic.MaxPlayerCount);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+//                        
+//                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
+                    }
                 }
             }
         }

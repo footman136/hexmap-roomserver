@@ -13,10 +13,10 @@ public class HexmapHelper : MonoBehaviour
 
     #region 初始化
 
-    public HexmapHelper()
-    {
-        hexGrid = new HexGrid();
-    }
+//    public HexmapHelper()
+//    {
+//        hexGrid = new HexGrid();
+//    }
     
     void Awake()
     {
@@ -171,6 +171,14 @@ public class HexmapHelper : MonoBehaviour
                 Debug.LogWarning("Unknown map format " + header);
             }
         }
+    }
+
+    public void Save(ref byte[] mapdata, ref int size)
+    {
+        MemoryStream stream = new MemoryStream(mapdata);
+        BinaryWriter writer = new BinaryWriter(stream);
+        writer.Write(mapFileVersion);
+        hexGrid.Save(writer);
     }
     
     #endregion

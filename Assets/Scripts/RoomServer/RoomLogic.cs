@@ -20,7 +20,8 @@ public class RoomLogic
 
     private int _curPlayerCount;
 
-    private HexmapHelper _hexmapHelper = new HexmapHelper();
+    public HexmapHelper _hexmapHelper = new HexmapHelper();
+    
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
 
@@ -158,13 +159,8 @@ public class RoomLogic
         }
         else
         {
-
-            PlayerInfo pi = GetPlayer(args);
-            if (pi != null)
-            {
-                pi._actorManager.AddActor(input.RoomId, input.OwnerId, input.ActorId, input.PosX, input.PosZ,
-                    input.Orientation, input.Species);
-            }
+            ActorManager.AddActor(input.RoomId, input.OwnerId, input.ActorId, input.PosX, input.PosZ,
+                input.Orientation, input.Species);
             
             // 转发给房间内的所有玩家
             CreateATroopReply output = new CreateATroopReply()
@@ -185,6 +181,8 @@ public class RoomLogic
         DestroyATroop input = DestroyATroop.Parser.ParseFrom(bytes);
         if (input.RoomId != _roomId)
             return;
+        
+        ActorManager.RemoveActor(input.ActorId);
         
         DestroyATroopReply output = new DestroyATroopReply()
         {
