@@ -170,13 +170,13 @@ public class RoomManager : MonoBehaviour
     {
         if (Players.ContainsKey(args))
         {
-            Log($"MSG: 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
+            Log($"MSG: DropAClient - 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
             RemovePlayerFromRoom(args);
             Players.Remove(args);
         }
         else
         {
-            Log("MSG: RoomServer - Reomve Player failed - Player not found!");
+            Log("MSG: DropAClient - Reomve Player failed - Player not found!");
         }
     }
 

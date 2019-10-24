@@ -11,7 +11,7 @@ using Random = UnityEngine.Random;
 
 namespace Actor
 {
-    public class ActorBehaviour
+    public class ActorBehaviour : MonoBehaviour
     {
         
         #region 成员
@@ -25,18 +25,13 @@ namespace Actor
         private float _distance;
         private float TIME_DELAY;
 
-        private long _roomId;
-        private long _ownerId;
-        private long _actorId;
-        private int _posX;
-        private int _posZ;
-        private float _orientation;
-        private string _species;
-
-        public long RoomId => _roomId;
-        public long OwnerId => _ownerId;
-        public long ActorId => _actorId;
-        public string Species => _species;
+        public long RoomId;
+        public long OwnerId;
+        public long ActorId;
+        public string Species;
+        public int PosX;
+        public int PosZ;
+        public float Orientation;
 
         //If true, AI changes to this animal will be logged in the console.
         private bool _logChanges = false;
@@ -48,15 +43,15 @@ namespace Actor
         // Start is called before the first frame update
         public ActorBehaviour(long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string species)
         {
-            _species = species;
+            Species = species;
             TIME_DELAY = 1f;
-            _roomId = roomId;
-            _ownerId = ownerId;
-            _actorId = actorId;
-            _posX = posX;
-            _posZ = posZ;
-            _orientation = orientation;
-            _species = species;
+            RoomId = roomId;
+            OwnerId = ownerId;
+            ActorId = actorId;
+            PosX = posX;
+            PosZ = posZ;
+            Orientation = orientation;
+            Species = species;
         }
 
         // Update is called once per frame

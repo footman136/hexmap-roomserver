@@ -10,15 +10,17 @@ using UnityEditorInternal;
 
 public class RoomLogic
 {
-    [SerializeField] private string _roomName;
+    private string _roomName;
 
-    [SerializeField] private long _roomId;
+    private long _roomId;
 
-    [SerializeField] private int _maxPlayerCount;
+    private int _maxPlayerCount;
 
-    [SerializeField] private long _creator;
+    private long _creator;
 
-    [SerializeField] private int _curPlayerCount;
+    private int _curPlayerCount;
+
+    private HexmapHelper _hexmapHelper = new HexmapHelper();
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
 
@@ -63,6 +65,21 @@ public class RoomLogic
     
     #endregion
 
+    #region 地图
+
+    public bool SetMap(byte[] mapdata)
+    {
+        // Oct.24.2019. Liu Gang
+        // 服务器读取地图数据这条路暂时搁置。因为地图数据这里与Unity的显示架构（MonoBehaviour）密切相关，这会导致两个问题：
+        // 1，这个地图数据结构是chunk模式的，HexCell都会从属于某个chunk，就算去掉chunk，unit的移动也会与此有关，剥离代码需要较长时间
+        // 2，因为很难做成数据/渲染分开的模式（如果要修改也需要较长的时间），这会导致服务器和客户端要同时维护两套代码
+        // ——所以，这个工作，我建议放在后面进行，比如确定使用java或者go语言来制作服务器的时候，专门给地图制作数据
+        // _hexmapHelper.Load(mapdata);
+        return true;
+    }
+    
+    #endregion
+    
     #region 玩家
     
     public void AddPlayer(SocketAsyncEventArgs args, long tokenId, string account)

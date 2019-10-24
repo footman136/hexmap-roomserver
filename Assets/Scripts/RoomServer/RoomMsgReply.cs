@@ -111,7 +111,7 @@ public class RoomMsgReply
             Enter = input,
         };
         RoomManager.Instance.AddPlayer(_args, pi);
-        RoomManager.Instance.Log($"MSG: 玩家登录房间服务器 - {input.Account}");
+        RoomManager.Instance.Log($"MSG: PLAYER_ENTER - 玩家登录房间服务器 - {input.Account}");
 
         PlayerEnterReply output = new PlayerEnterReply()
         {
@@ -187,7 +187,15 @@ public class RoomMsgReply
         string tableName = $"MAP:{input.RoomId}";
         if (!RoomManager.Instance.Redis.CSRedis.Exists(tableName))
         {
-            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - Redis中没有找到地图表格 - {tableName}");
+            string msg = $"Redis中没有找到地图表格 - {tableName}";
+            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            DownloadMapReply output = new DownloadMapReply()
+            {
+                Ret = false,
+                ErrMsg = msg,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            return;
         }
         
         //////////////
@@ -195,7 +203,14 @@ public class RoomMsgReply
         long roomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId");
         if (roomId != input.RoomId)
         {
-            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！roomId不匹配！传来的RoomId:{input.RoomId} - Redis中保存的RoomId:{roomId}");
+            string msg = $"从Redis中读取地图数据失败！roomId不匹配！传来的RoomId:{input.RoomId} - Redis中保存的RoomId:{roomId}";
+            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            DownloadMapReply output = new DownloadMapReply()
+            {
+                Ret = false,
+                ErrMsg = msg,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
         string roomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName");
@@ -205,7 +220,14 @@ public class RoomMsgReply
         PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
         if (pi == null)
         {
-            RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 从Redis中读取地图数据失败！创建者没有找到！地图名:{roomName}");
+            string msg = $"从Redis中读取地图数据失败！我自己并没有在房间服务器！地图名:{roomName} - RoomId:{roomId}";
+            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            DownloadMapReply output = new DownloadMapReply()
+            {
+                Ret = false,
+                ErrMsg = msg,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
         long TokenId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
@@ -219,6 +241,37 @@ public class RoomMsgReply
         // 读取地图数据
         byte[] totalData = RoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, "MapData");
         int totalSize = totalData.Length;
+        
+        //////////////
+        // 服务器把这份数据留起来自己用——这部分代码暂时无效
+        if (!RoomManager.Instance.Rooms.ContainsKey(roomId))
+        {
+            string msg = ($"该房间尚未创建或者已经被销毁！地图名:{roomName} - RoomId:{roomId}");
+            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            DownloadMapReply output = new DownloadMapReply()
+            {
+                Ret = false,
+                ErrMsg = msg,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            return;
+        }
+        var room = RoomManager.Instance.Rooms[roomId];
+        if (!room.SetMap(totalData))
+        {
+            string msg = ($"地图数据不合法，可能已经被损坏！地图名:{roomName} - RoomId:{roomId}");
+            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            DownloadMapReply output = new DownloadMapReply()
+            {
+                Ret = false,
+                ErrMsg = msg,
+            };
+            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            return;
+        }
+        
+        //////////////
+        // 把地图数据下发到客户端
         const int CHUNK_SIZE = 900;
         int remainSize = totalSize;
         int index = 0;
