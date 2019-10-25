@@ -6,6 +6,7 @@ using Google.Protobuf;
 using Protobuf.Room;
 using UnityEngine;
 using Actor;
+using AI;
 using UnityEditorInternal;
 
 public class RoomLogic
@@ -20,7 +21,8 @@ public class RoomLogic
 
     private int _curPlayerCount;
 
-    public HexmapHelper _hexmapHelper = new HexmapHelper();
+    public HexmapHelper HexmapHelper = new HexmapHelper();
+    public ActorManager ActorManager = new ActorManager();
     
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
@@ -55,6 +57,7 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.CreateAtroop, OnCreateATroop);
         MsgDispatcher.RegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
+        MsgDispatcher.RegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
     }
 
     public void RemoveListener()
@@ -62,6 +65,7 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.CreateAtroop, OnCreateATroop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
     }
     
     #endregion
@@ -165,13 +169,14 @@ public class RoomLogic
             // 转发给房间内的所有玩家
             CreateATroopReply output = new CreateATroopReply()
             {
-                Ret = true,
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
                 ActorId = input.ActorId,
                 Orientation = input.Orientation,
-                OwnerId = input.OwnerId,
                 PosX = input.PosX,
                 PosZ = input.PosZ,
                 Species = input.Species,
+                Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
         }
@@ -186,8 +191,9 @@ public class RoomLogic
         
         DestroyATroopReply output = new DestroyATroopReply()
         {
-            ActorId = input.ActorId,
+            RoomId = input.RoomId,
             OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
             Ret = true,
         };
         BroadcastMsg(ROOM_REPLY.DestroyAtroopReply, output.ToByteArray());
@@ -212,6 +218,27 @@ public class RoomLogic
             Ret = true,
         };
         BroadcastMsg(ROOM_REPLY.TroopMoveReply, output.ToByteArray());
+    }
+
+    private void OnTroopAiState(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        TroopAiState input = TroopAiState.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        TroopAiStateReply output = new TroopAiStateReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            State = input.State,
+            PosFromX = input.PosFromX,
+            PosFromZ = input.PosFromZ,
+            PosToX = input.PosToX,
+            PosToZ = input.PosToZ,
+            Speed = input.Speed,
+            Ret = true,
+        };        
+        BroadcastMsg(ROOM_REPLY.TroopAiStateReply, output.ToByteArray());
     }
         
     #endregion

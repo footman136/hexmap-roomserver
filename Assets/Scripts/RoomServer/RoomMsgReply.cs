@@ -317,18 +317,19 @@ public class RoomMsgReply
         }
         
         // 最后一件事：把房间内已有的所有actor都发给本人
-        foreach (var keyValue in ActorManager.AllActors)
+        foreach (var keyValue in room.ActorManager.AllActors)
         {
             // 转发给房间内的所有玩家
             CreateATroopReply output = new CreateATroopReply()
             {
-                Ret = true,
-                ActorId = keyValue.Value.ActorId,
-                Orientation = keyValue.Value.Orientation,
+                RoomId = keyValue.Value.RoomId,
                 OwnerId = keyValue.Value.OwnerId,
+                ActorId = keyValue.Value.ActorId,
                 PosX = keyValue.Value.PosX,
                 PosZ = keyValue.Value.PosZ,
+                Orientation = keyValue.Value.Orientation,
                 Species = keyValue.Value.Species,
+                Ret = true,
             };
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
         }

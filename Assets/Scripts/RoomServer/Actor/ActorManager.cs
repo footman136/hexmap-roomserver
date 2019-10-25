@@ -2,28 +2,48 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Actor
+namespace AI
 {
-
+    /// <summary>
+    /// 本类与ActorBehaviour配合使用，专门管理ActorBehaviour
+    /// </summary>
     public class ActorManager
     {
-        private static Dictionary<long, ActorBehaviour> _allActors = new Dictionary<long, ActorBehaviour>();
-        public static Dictionary<long, ActorBehaviour> AllActors => _allActors;
+        private Dictionary<long, ActorBehaviour> _allActors = new Dictionary<long, ActorBehaviour>();
+        public Dictionary<long, ActorBehaviour> AllActors => _allActors;
 
-        public static void AddActor(long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string species)
+        public void AddActor(long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string species)
         {
-            ActorBehaviour ab = new ActorBehaviour(roomId, ownerId, actorId, posX, posZ, orientation, species);
-            ab.Init();
+            ActorBehaviour ab = new ActorBehaviour();
+            ab.Init(roomId, ownerId, actorId, posX, posZ, orientation, species);
             _allActors.Add(actorId, ab);
         }
 
-        public static void RemoveActor(long actorId)
+        public void RemoveActor(long actorId)
         {
             if (_allActors.ContainsKey(actorId))
             {
                 var actor = _allActors[actorId];
                 actor.Fini();
                 _allActors.Remove(actorId);
+            }
+        }
+
+        public ActorBehaviour GetPlayer(long actorId)
+        {
+            if (_allActors.ContainsKey(actorId))
+            {
+                return _allActors[actorId];
+            }
+
+            return null;
+        }
+
+        public void Tick()
+        {
+            foreach (var keyValue in _allActors)
+            {
+                keyValue.Value.Tick();
             }
         }
     }

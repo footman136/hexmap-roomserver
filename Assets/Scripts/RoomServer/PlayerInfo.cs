@@ -1,5 +1,5 @@
 ﻿using Protobuf.Room;
-
+using AI;
 namespace Actor
 {
     public class PlayerInfo
@@ -13,7 +13,5 @@ namespace Actor
         public bool IsCreatedByMe;
     
         public long RoomId;
-    
-        public ActorManager _actorManager = new ActorManager();
     }
 }

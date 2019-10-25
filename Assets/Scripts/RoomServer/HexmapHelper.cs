@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using Actor;
 using UnityEngine;
 
 public class HexmapHelper : MonoBehaviour
@@ -12,16 +11,11 @@ public class HexmapHelper : MonoBehaviour
     const int mapFileVersion = 5;
 
     #region 初始化
-
-//    public HexmapHelper()
-//    {
-//        hexGrid = new HexGrid();
-//    }
     
     void Awake()
     {
         // 这一行，查了两个小时。。。如果没有，打包客户端后，地表看不到任何颜色，都是灰色。
-        //Shader.EnableKeyword("HEX_MAP_EDIT_MODE");
+        Shader.EnableKeyword("HEX_MAP_EDIT_MODE");
     }
     // Start is called before the first frame update
     void Start()
@@ -157,29 +151,6 @@ public class HexmapHelper : MonoBehaviour
         writer.Close();
         //writer = null;
     }
-
-    public void Load(byte[] mapdata)
-    {
-        MemoryStream stream = new MemoryStream(mapdata);
-        using (BinaryReader reader = new BinaryReader(stream)) {
-            int header = reader.ReadInt32();
-            if (header <= mapFileVersion) {
-                hexGrid.Load(reader, header);
-                HexMapCamera.ValidatePosition();
-            }
-            else {
-                Debug.LogWarning("Unknown map format " + header);
-            }
-        }
-    }
-
-    public void Save(ref byte[] mapdata, ref int size)
-    {
-        MemoryStream stream = new MemoryStream(mapdata);
-        BinaryWriter writer = new BinaryWriter(stream);
-        writer.Write(mapFileVersion);
-        hexGrid.Save(writer);
-    }
     
     #endregion
 
@@ -209,8 +180,18 @@ public class HexmapHelper : MonoBehaviour
     #endregion
     
     #region 单元
-    
-    public bool CreateUnit (string unitName, int posX, int posZ, float orientation, long actorId, long OwnerId)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="roomId">房间id</param>
+    /// <param name="ownerId">所属玩家id</param>
+    /// <param name="actorId">自己的id</param>
+    /// <param name="posX"></param>
+    /// <param name="posZ"></param>
+    /// <param name="orientation"></param>
+    /// <param name="unitName"></param>
+    /// <returns></returns>
+    public bool CreateUnit (long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string unitName)
     {
         HexCell cell = GetCell(posX, posZ);
         if (cell && !cell.Unit)
@@ -223,17 +204,22 @@ public class HexmapHelper : MonoBehaviour
                 if (hu != null)
                 {
                     hexGrid.AddUnit(hu, cell, orientation);
-                    var av = hu.GetComponent<ActorBehaviour>();
-                    if (av != null)
-                    {
-                        av.ActorId = actorId;
-                        av.OwnerId = OwnerId;
-                        av.PosX = posX;
-                        av.PosZ = posZ;
-                        av.Orientation = orientation;
-                        av.Species = unitName;
-                    }
-                    RoomManager.Instance.Log($"MSG: CreateATroopReply - 创建了一个Actor - {unitName}");
+//                    var av = hu.GetComponent<ActorVisualizer>();
+//                    if (av != null)
+//                    {
+//                        av.ActorId = actorId;
+//                        av.OwnerId = ownerId;
+//                        av.PosX = posX;
+//                        av.PosZ = posZ;
+//                        av.Orientation = orientation;
+//                        av.Species = unitName;
+//                    }
+//
+//                    if (!RoomManager.Instance.RoomLogic.ActorManager.AllActors.ContainsKey(actorId))
+//                    {
+//                        RoomManager.Instance.RoomLogic.ActorManager.AddActor(roomId, ownerId, actorId, posX, posZ, orientation, unitName);
+//                    }
+//                    RoomManager.Instance.Log($"MSG: CreateATroopReply - 创建了一个Actor - {unitName}");
                     return true;
                 }
             }
@@ -248,48 +234,65 @@ public class HexmapHelper : MonoBehaviour
 
     public bool DestroyUnit (long actorId) 
     {
-        if (ActorManager.AllActors.ContainsKey(actorId))
-        {
-            var av = ActorManager.AllActors[actorId];
-            if (av != null)
-            {
-                var hu = av.GetComponent<HexUnit>();
-                if (hu != null)
-                {
-                    RoomManager.Instance.Log($"MSG: DestroyATroopReply -  销毁了一个Actor - {av.Species}");
-                    hexGrid.RemoveUnit(hu);
-                    return true;
-                }
-            }
-        }
+//        GameRoomManager.Instance.RoomLogic.ActorManager.RemoveActor(actorId);
+//        if (ActorVisualizer.AllActors.ContainsKey(actorId))
+//        {
+//            var av = ActorVisualizer.AllActors[actorId];
+//            if (av != null)
+//            {
+//                var hu = av.GetComponent<HexUnit>();
+//                if (hu != null)
+//                {
+//                    GameRoomManager.Instance.Log($"MSG: DestroyATroopReply -  销毁了一个Actor - {av.Species}");
+//                    hexGrid.RemoveUnit(hu);
+//                    return true;
+//                }
+//            }
+//        }
 
         return false;
     }
 
     public void DoMove (long actorId, int posX, int posZ, float Speed)
     {
-        if (ActorManager.AllActors.ContainsKey(actorId))
-        {
-            var av = ActorManager.AllActors[actorId];
-            if (av != null)
-            {
-                var hu = av.GetComponent<HexUnit>();
-                if (hu != null)
-                {
-                    HexCell hc = GetCell(posX, posZ);
-                    if (hu.IsValidDestination(hc))
-                    {
-                        hexGrid.FindPath(hu.Location, hc, hu);
-                        if (hexGrid.HasPath)
-                        {
-                            List<HexCell> listPath = hexGrid.GetPath();
-                            hu.Travel(listPath);
-                        }
-                    }
+//        if (ActorVisualizer.AllActors.ContainsKey(actorId))
+//        {
+//            var av = ActorVisualizer.AllActors[actorId];
+//            if (av != null)
+//            {
+//                var hu = av.GetComponent<HexUnit>();
+//                if (hu != null)
+//                {
+//                    HexCell hc = GetCell(posX, posZ);
+//                    if (hu.IsValidDestination(hc))
+//                    {
+//                        hexGrid.FindPath(hu.Location, hc, hu);
+//                        if (hexGrid.HasPath)
+//                        {
+//                            List<HexCell> listPath = hexGrid.GetPath();
+//                            hu.Travel(listPath);
+//                        }
+//                    }
+//
+//                }
+//            }
+//        }
+    }
 
-                }
-            }
-        }
+    public void Stop(long actorId)
+    {
+//        if (ActorVisualizer.AllActors.ContainsKey(actorId))
+//        {
+//            var av = ActorVisualizer.AllActors[actorId];
+//            if (av != null)
+//            {
+//                var hu = av.GetComponent<HexUnit>();
+//                if (hu != null)
+//                {
+//                    hu.Stop();
+//                }
+//            }
+//        }
     }
 
     #endregion
