@@ -319,7 +319,6 @@ public class RoomMsgReply
         // 最后一件事：把房间内已有的所有actor都发给本人
         foreach (var keyValue in room.ActorManager.AllActors)
         {
-            // 转发给房间内的所有玩家
             CreateATroopReply output = new CreateATroopReply()
             {
                 RoomId = keyValue.Value.RoomId,
