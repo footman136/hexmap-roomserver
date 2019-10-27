@@ -7,6 +7,7 @@ using Protobuf.Room;
 using UnityEngine;
 using Actor;
 using AI;
+using Google.Protobuf.Reflection;
 using UnityEditorInternal;
 
 public class RoomLogic
@@ -23,6 +24,7 @@ public class RoomLogic
 
     public HexmapHelper HexmapHelper = new HexmapHelper();
     public ActorManager ActorManager = new ActorManager();
+    public UrbanManager UrbanManager = new UrbanManager();
     
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
@@ -58,6 +60,9 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
+        MsgDispatcher.RegisterMsg((int)ROOM.AskForCities, OnAskForCities);
+        MsgDispatcher.RegisterMsg((int)ROOM.CityAdd, OnCityAdd);
+        MsgDispatcher.RegisterMsg((int)ROOM.CityRemove, OnCityRemove);
     }
 
     public void RemoveListener()
@@ -66,6 +71,9 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.DestroyAtroop, OnDestroyATroop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.AskForCities, OnAskForCities);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.CityAdd, OnCityAdd);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.CityRemove, OnCityRemove);
     }
     
     #endregion
@@ -81,6 +89,56 @@ public class RoomLogic
         // ——所以，这个工作，我建议放在后面进行，比如确定使用java或者go语言来制作服务器的时候，专门给地图制作数据
         // _hexmapHelper.Load(mapdata);
         return true;
+    }
+
+    public void SavePlayer(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = GetPlayer(args);
+        if (pi == null)
+        {
+            RoomManager.Instance.Log("SavePlayer Error - player not found!");
+            return;
+        }
+
+        long ownerId = pi.Enter.TokenId;
+        
+        // 保存该玩家的城市数据
+        byte[] cityBytes = UrbanManager.SaveBuffer();
+        if (cityBytes.Length > 1024 * 8)
+        {
+            RoomManager.Instance.Log($"SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
+        }
+
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"Cities";
+        RoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
+    }
+
+    public void LoadPlayer(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = GetPlayer(args);
+        if (pi == null)
+        {
+            RoomManager.Instance.Log("LoadPlayer Error - player not found!");
+            return;
+        }
+
+        long ownerId = pi.Enter.TokenId;
+        
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"Cities";
+        byte[] cityBytes = RoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        if (cityBytes != null)
+        {
+            if (!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length))
+            {
+                RoomManager.Instance.Log("RoomLogic LoadPlayer Error - LoadBuffer Failed!");
+            }
+            else
+            {
+                RoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
+            }
+        }
     }
     
     #endregion
@@ -127,7 +185,6 @@ public class RoomLogic
     }
     
     #endregion
-
     
     #region 消息处理
 
@@ -239,6 +296,113 @@ public class RoomLogic
             Ret = true,
         };        
         BroadcastMsg(ROOM_REPLY.TroopAiStateReply, output.ToByteArray());
+    }
+
+    private void OnAskForCities(SocketAsyncEventArgs args, byte [] bytes)
+    {
+        AskForCities input = AskForCities.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        PlayerInfo pi = GetPlayer(args);
+        if (pi == null)
+        {
+            AskForCitiesReply output = new AskForCitiesReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                Ret = false,
+            };
+            RoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
+            return;
+        }
+
+        long OwnerId = pi.Enter.TokenId;
+
+        long capitalCityId = 0;
+        foreach (var keyValue in UrbanManager.Cities)
+        {
+            UrbanCity city = keyValue.Value;
+            if (city.IsCapital && city.OwnerId == OwnerId)
+                capitalCityId = city.CityId;
+            CityAddReply output = new CityAddReply()
+            {
+                RoomId = city.RoomId,
+                OwnerId = city.OwnerId,
+                CityId = city.CityId,
+                PosX = city.PosX,
+                PosZ = city.PosZ,
+                CellIndex = city.CellIndex,
+                CityName = city.CityName,
+                CitySize = city.CitySize,
+                IsCapital = city.IsCapital,
+                Ret = true,
+            }; 
+            RoomManager.Instance.SendMsg(args, ROOM_REPLY.CityAddReply, output.ToByteArray());
+        }
+
+        {
+            AskForCitiesReply output = new AskForCitiesReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                TotalCityCount = UrbanManager.Cities.Count,
+                MyCityCount = UrbanManager.GetMyCityCount(OwnerId),
+                CapitalCityId = capitalCityId,
+                Ret = true,
+            };
+            RoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
+        }
+    }
+
+    private void OnCityAdd(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        CityAdd input = CityAdd.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        bool isCapital = UrbanManager.GetMyCityCount(input.OwnerId) == 0; // 第一座城市是都城
+        CityAddReply output = new CityAddReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            CityId = input.CityId,
+            PosX = input.PosX,
+            PosZ = input.PosZ,
+            CellIndex = input.CellIndex,
+            CityName = input.CityName,
+            CitySize = input.CitySize,
+            IsCapital = isCapital,
+            Ret = true,
+        };
+        UrbanCity city = new UrbanCity()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            CityId = input.CityId,
+            PosX = input.PosX,
+            PosZ = input.PosZ,
+            CellIndex = input.CellIndex,
+            CityName = input.CityName,
+            CitySize = input.CitySize,
+            IsCapital = isCapital,
+        };
+        UrbanManager.AddCity(city);
+        BroadcastMsg(ROOM_REPLY.CityAddReply, output.ToByteArray());
+    }
+
+    private void OnCityRemove(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        CityRemove input = CityRemove.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        CityRemoveReply output = new CityRemoveReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            CityId = input.CityId,
+            Ret = true,
+        };
+        UrbanManager.RemoveCity(input.CityId);
+        BroadcastMsg(ROOM_REPLY.CityRemoveReply, output.ToByteArray());
     }
         
     #endregion

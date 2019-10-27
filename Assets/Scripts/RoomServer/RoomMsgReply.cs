@@ -257,8 +257,8 @@ public class RoomMsgReply
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
-        var room = RoomManager.Instance.Rooms[roomId];
-        if (!room.SetMap(totalData))
+        var roomLogic = RoomManager.Instance.Rooms[roomId];
+        if (!roomLogic.SetMap(totalData))
         {
             string msg = ($"地图数据不合法，可能已经被损坏！地图名:{roomName} - RoomId:{roomId}");
             RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
@@ -270,6 +270,9 @@ public class RoomMsgReply
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
+
+        // 把玩家私人的数据（比如：城市）从Redis里读出来
+        roomLogic.LoadPlayer(_args);
         
         //////////////
         // 把地图数据下发到客户端
@@ -317,7 +320,7 @@ public class RoomMsgReply
         }
         
         // 最后一件事：把房间内已有的所有actor都发给本人
-        foreach (var keyValue in room.ActorManager.AllActors)
+        foreach (var keyValue in roomLogic.ActorManager.AllActors)
         {
             CreateATroopReply output = new CreateATroopReply()
             {
@@ -435,7 +438,8 @@ public class RoomMsgReply
             RoomLogic roomLogic = RoomManager.Instance.Rooms[input.RoomId];
             if (roomLogic != null)
             {
-                string account = RoomManager.Instance.GetPlayer(args)?.Enter.Account;
+                roomLogic.SavePlayer(args);
+                string account = roomLogic.GetPlayer(args)?.Enter.Account;
                 RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
                 RoomManager.Instance.RemovePlayer(args);
                 if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
