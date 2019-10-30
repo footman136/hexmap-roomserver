@@ -90,7 +90,7 @@ public class ServerScript : MonoBehaviour {
         }
         catch (Exception e)
         {
-            Debug.LogError($"Server SendMsg() Exception - {e}");
+            Debug.LogError($"Server SendMsg() Exception - size:{size} - {e}");
             throw;
         }
     }

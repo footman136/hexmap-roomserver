@@ -106,7 +106,7 @@ public class RoomManager : MonoBehaviour
     
     void OnReceive(SocketAsyncEventArgs args, byte[] content, int size)
     {
-        receive_str = System.Text.Encoding.UTF8.GetString(content);
+        receive_str = System.Text.Encoding.UTF8.GetString(content, 0, 100);
         RoomMsgReply.ProcessMsg(args, content, size);
     }
 

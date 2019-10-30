@@ -168,9 +168,12 @@ public class RoomMsgReply
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
                 RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapDataSize", totalSize);
+                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "CreateTime", DateTime.Now);
 
                 RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 上传地图数据，并保存到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
             }
+            
         }
         UploadMapReply output = new UploadMapReply()
         {
