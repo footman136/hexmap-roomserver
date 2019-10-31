@@ -96,7 +96,7 @@ public class RoomLogic
         PlayerInfo pi = GetPlayer(args);
         if (pi == null)
         {
-            RoomManager.Instance.Log("SavePlayer Error - player not found!");
+            RoomManager.Instance.Log("RoomLogic SavePlayer Error - player not found!");
             return;
         }
 
@@ -106,12 +106,13 @@ public class RoomLogic
         byte[] cityBytes = UrbanManager.SaveBuffer();
         if (cityBytes.Length > 1024 * 8)
         {
-            RoomManager.Instance.Log($"SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
+            RoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
         }
 
         string tableName = $"MAP:{RoomId}";
         string keyName = $"Cities";
         RoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
+        RoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
     }
 
     public void LoadPlayer(SocketAsyncEventArgs args)

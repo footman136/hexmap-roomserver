@@ -236,10 +236,10 @@ public class RoomManager : MonoBehaviour
     {
         bool ret = false;
         PlayerInfo pi = GetPlayer(args);
-        if (pi != null)
+        if (pi == null)
         {
-            RemovePlayerFromRoom(args);
-            Players.Remove(args);
+            Log($"RoomManager RemovePlayer Error - Player not found!");
+            return;
         }
         RoomLogic roomLogic = Rooms[pi.RoomId];
         roomLogic.SavePlayer(args);
@@ -277,6 +277,8 @@ public class RoomManager : MonoBehaviour
 //                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
             }
         }
+        RemovePlayerFromRoom(args);
+        Players.Remove(args);
     }
 
     public PlayerInfo GetPlayer(SocketAsyncEventArgs args)

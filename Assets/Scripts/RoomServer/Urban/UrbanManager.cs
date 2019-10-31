@@ -63,7 +63,8 @@ public class UrbanManager
             bw.Write(keyValue.Value.PosZ);
             bw.Write(keyValue.Value.CellIndex);
             bw.Write(keyValue.Value.CityName);
-            bw.Write(keyValue.Value.CitySize);
+            bw.Write((byte)keyValue.Value.CitySize);
+            bw.Write(keyValue.Value.IsCapital);
         }
 
         return ms.GetBuffer();
@@ -100,7 +101,8 @@ public class UrbanManager
                 PosZ = br.ReadInt32(),
                 CellIndex= br.ReadInt32(),
                 CityName =  br.ReadString(),
-                CitySize = br.ReadInt32(),
+                CitySize = br.ReadByte(),
+                IsCapital = br.ReadBoolean(),
             };
             AddCity(city);
         }
