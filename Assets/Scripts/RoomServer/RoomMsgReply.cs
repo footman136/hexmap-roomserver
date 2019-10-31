@@ -21,27 +21,11 @@ using Actor;
 public class RoomMsgReply
 {
     private static SocketAsyncEventArgs _args;
-    
-    // 只能放到主线程来执行的消息链表
-    private static object _lockObj;
-
-    public struct ObjMsgDefine
-    {
-        public SocketAsyncEventArgs _args;
-        public byte[] _bytes;
-        public int _size;
-    };
-    public static List<ObjMsgDefine> _objectMsgList;
 
     #region 消息分发
 
     public static void Init()
     {
-        _lockObj = new object();
-        lock (_lockObj)
-        {
-            _objectMsgList = new List<ObjMsgDefine>();
-        }
     }
     
     /// <summary>
@@ -68,6 +52,9 @@ public class RoomMsgReply
             {
                 case ROOM.PlayerEnter:
                     PLAYER_ENTER(recvData);
+                    break;
+                case ROOM.HeartBeat:
+                    HEART_BEAT(recvData);
                     break;
                 case ROOM.UploadMap:
                     UPLOAD_MAP(recvData);
@@ -118,6 +105,15 @@ public class RoomMsgReply
             Ret = true,
         };
         RoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+    }
+
+    private static void HEART_BEAT(byte[] byts)
+    {
+        var pi = RoomManager.Instance.GetPlayer(_args);
+        if (pi != null)
+        {
+            pi.HeartBeatTime = DateTime.Now;
+        }
     }
 
     private static List<byte[]> mapDataBuffers = new List<byte[]>();
@@ -248,7 +244,8 @@ public class RoomMsgReply
         
         //////////////
         // 服务器把这份数据留起来自己用——这部分代码暂时无效
-        if (!RoomManager.Instance.Rooms.ContainsKey(roomId))
+        var roomLogic = RoomManager.Instance.GetRoomLogic(roomId);
+        if (roomLogic == null)
         {
             string msg = ($"该房间尚未创建或者已经被销毁！地图名:{roomName} - RoomId:{roomId}");
             RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
@@ -260,7 +257,6 @@ public class RoomMsgReply
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
-        var roomLogic = RoomManager.Instance.Rooms[roomId];
         if (!roomLogic.SetMap(totalData))
         {
             string msg = ($"地图数据不合法，可能已经被损坏！地图名:{roomName} - RoomId:{roomId}");
@@ -345,8 +341,8 @@ public class RoomMsgReply
     private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
     {
         EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
-        RoomLogic roomLogic = null;
-        if (!RoomManager.Instance.Rooms.ContainsKey(input.RoomId))
+        RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
+        if (roomLogic == null)
         { // 房间没有开启，需要开启并进入
             roomLogic = new RoomLogic();
             if (roomLogic != null)
@@ -363,12 +359,8 @@ public class RoomMsgReply
                 };
                 // 初始化
                 roomLogic.Init(roomInfo);
-                RoomManager.Instance.Rooms.Add(roomInfo.RoomId, roomLogic);
+                RoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
             }
-        }
-        else
-        { // 房间已经开启，只需要进入    
-            roomLogic = RoomManager.Instance.Rooms[input.RoomId];
         }
 
         bool ret = false;
@@ -431,55 +423,17 @@ public class RoomMsgReply
         LeaveRoom input = LeaveRoom.Parser.ParseFrom(bytes);
 
         bool ret = false;
-        if (!RoomManager.Instance.Rooms.ContainsKey(input.RoomId))
+        RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
+        if (roomLogic != null)
         {
-            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - room not found! RoomId:{input.RoomId}");
+            string account = roomLogic.GetPlayer(args)?.Enter.Account;
+            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
+            RoomManager.Instance.RemovePlayer(args, input.ReleaseIfNoUser);
+            ret = true;
         }
         else
         {
-            ret = true;
-            RoomLogic roomLogic = RoomManager.Instance.Rooms[input.RoomId];
-            if (roomLogic != null)
-            {
-                roomLogic.SavePlayer(args);
-                string account = roomLogic.GetPlayer(args)?.Enter.Account;
-                RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
-                RoomManager.Instance.RemovePlayer(args);
-                if (roomLogic.CurPlayerCount == 0 && input.ReleaseIfNoUser)
-                {
-                    if (input.ReleaseIfNoUser)
-                    {
-                        roomLogic.Fini(); // 结束化
-                        RoomManager.Instance.Rooms.Remove(input.RoomId);
-                        // 通知大厅：删除房间
-                        UpdateRoomInfo output2 = new UpdateRoomInfo()
-                        {
-                            RoomId = roomLogic.RoomId,
-                            IsRemove = true,
-                        };
-                        ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
-                    }
-                    else
-                    {
-                        // 存盘这个事情先放一放，因为：
-                        // 1，服务器目前还没有全部的地图数据
-                        // 2，里面的Actor我想单独写地方来保存，而不是用它原有的结构。因为未来游戏主要会在这里进行拓展
-                        // Oct.24.2019. Liu Gang. 
-//                        int size = 256 * 1024;
-//                        byte[] totalMapData = new byte[size];
-//                        roomLogic._hexmapHelper.Save(ref totalMapData, ref size);
-//                        // 存盘
-//                        string tableName = $"MAP:{roomLogic.RoomId}";
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", roomLogic.Creator);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomLogic.RoomId);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", roomLogic.RoomName);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", roomLogic.MaxPlayerCount);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
-//                        
-//                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
-                    }
-                }
-            }
+            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - room not found! RoomId:{input.RoomId}");                
         }
 
         LeaveRoomReply output = new LeaveRoomReply()

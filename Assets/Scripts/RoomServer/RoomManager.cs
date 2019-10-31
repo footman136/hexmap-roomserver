@@ -8,6 +8,7 @@ using LitJson;
 using Main;
 using Protobuf.Room;
 using Actor;
+using Google.Protobuf;
 
 public class RoomManager : MonoBehaviour
 {
@@ -17,18 +18,20 @@ public class RoomManager : MonoBehaviour
     public RedisManager Redis => _redis;
     
     private string receive_str;
-
+    
     // 玩家的集合，Key是玩家的TokenId，因为真正的账号系统我们不一定能够获得玩家的账号名
     public Dictionary<SocketAsyncEventArgs, PlayerInfo> Players { set; get; }
     
     // 房间的集合，Key是房间的唯一ID
-    public Dictionary<long, RoomLogic> Rooms { set; get; }
+    private Dictionary<long, RoomLogic> Rooms { set; get; }
 
     public string ServerName;
     public long ServerId;
     public int MaxRoomCount;
     public int CurRoomCount;
     public int MaxPlayerPerRoom;
+    
+    private const float _heartBeatTimeInterval = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
 
     void Awake()
     {
@@ -77,6 +80,7 @@ public class RoomManager : MonoBehaviour
         receive_str = $"Server started! {_server.Address}:{_server.Port}";
         // RoomServer已经启动成功，开始监听了，进入Connecting阶段，开始连接大厅服务器
         ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
+        StartCheckHeartBeat(); //监听心跳
     }
 
     void OnGUI()
@@ -104,6 +108,40 @@ public class RoomManager : MonoBehaviour
     
     #endregion
     
+    #region 检测心跳
+
+    private void StartCheckHeartBeat()
+    {
+        InvokeRepeating(nameof(CheckHeartBeat), _heartBeatTimeInterval, _heartBeatTimeInterval);
+    }
+
+    private void StopCheckHeartBeat()
+    {
+        CancelInvoke(nameof(CheckHeartBeat));
+    }
+
+    private void CheckHeartBeat()
+    {
+        var now = DateTime.Now;
+        List<SocketAsyncEventArgs> delPlayerList = new List<SocketAsyncEventArgs>();
+        foreach (var keyValue in Players)
+        {
+            var ts = now - keyValue.Value.HeartBeatTime;
+            if (ts.TotalSeconds > _heartBeatTimeInterval)
+            { // 改客户端超时没有心跳了,干掉
+                delPlayerList.Add(keyValue.Key);
+            }
+        }
+        foreach (var args in delPlayerList)
+        {
+            _server.CloseASocket(args);
+        }
+    }
+    
+    #endregion
+
+    #region 收发消息
+    
     void OnReceive(SocketAsyncEventArgs args, byte[] content, int size)
     {
         receive_str = System.Text.Encoding.UTF8.GetString(content, 0, 100);
@@ -116,6 +154,7 @@ public class RoomManager : MonoBehaviour
         {
             case ServerSocketAction.Listen:
                 // 因为启动顺序的关系，这段代码不会被执行到
+                StartCheckHeartBeat();
                 receive_str = $"RoomServer started! {_server.Address}:{_server.Port}";
                 _server.Log(receive_str);
                 break;
@@ -141,6 +180,7 @@ public class RoomManager : MonoBehaviour
                 _server.Log(receive_str);
                 break;
             case ServerSocketAction.Close:
+                StopCheckHeartBeat();
                 receive_str = "RoomServer Stopped!";
                 _server.Log(receive_str);
                 break;
@@ -171,12 +211,11 @@ public class RoomManager : MonoBehaviour
         if (Players.ContainsKey(args))
         {
             Log($"MSG: DropAClient - 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
-            RemovePlayerFromRoom(args);
-            Players.Remove(args);
+            RemovePlayer(args, true);
         }
         else
         {
-            Log("MSG: DropAClient - Reomve Player failed - Player not found!");
+            Log("MSG: DropAClient - Remove Player failed - Player not found!");
         }
     }
 
@@ -184,18 +223,59 @@ public class RoomManager : MonoBehaviour
     {
         transform.name = $"RoomManager - ({transform.childCount})";
     }
-
+    
+    #endregion
+    
+    #region 玩家
+    
     public void AddPlayer(SocketAsyncEventArgs args, PlayerInfo pi)
     {
         RoomManager.Instance.Players[args] = pi;
     }
-    public void RemovePlayer(SocketAsyncEventArgs args)
+    public void RemovePlayer(SocketAsyncEventArgs args, bool bCloseRoomIfNoUser)
     {
+        bool ret = false;
         PlayerInfo pi = GetPlayer(args);
         if (pi != null)
         {
             RemovePlayerFromRoom(args);
             Players.Remove(args);
+        }
+        RoomLogic roomLogic = Rooms[pi.RoomId];
+        roomLogic.SavePlayer(args);
+        if (roomLogic.CurPlayerCount == 0 && bCloseRoomIfNoUser)
+        {
+            if (bCloseRoomIfNoUser)
+            {
+                roomLogic.Fini(); // 结束化
+                Rooms.Remove(pi.RoomId);
+                // 通知大厅：删除房间
+                Protobuf.Lobby.UpdateRoomInfo output2 = new Protobuf.Lobby.UpdateRoomInfo()
+                {
+                    RoomId = roomLogic.RoomId,
+                    IsRemove = true,
+                };
+                ClientManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
+            }
+            else
+            {
+                // 存盘这个事情先放一放，因为：
+                // 1，服务器目前还没有全部的地图数据
+                // 2，里面的Actor我想单独写地方来保存，而不是用它原有的结构。因为未来游戏主要会在这里进行拓展
+                // Oct.24.2019. Liu Gang. 
+//                        int size = 256 * 1024;
+//                        byte[] totalMapData = new byte[size];
+//                        roomLogic._hexmapHelper.Save(ref totalMapData, ref size);
+//                        // 存盘
+//                        string tableName = $"MAP:{roomLogic.RoomId}";
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", roomLogic.Creator);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomLogic.RoomId);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", roomLogic.RoomName);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", roomLogic.MaxPlayerCount);
+//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+//                        
+//                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
+            }
         }
     }
 
@@ -228,5 +308,20 @@ public class RoomManager : MonoBehaviour
             Rooms[roomId].RemovePlayer(args);
         }
     }
+    
+    #endregion
+    
+    #region 房间
 
+    public void AddRoomLogic(long roomId, RoomLogic roomLogic)
+    {
+        Rooms.Add(roomId, roomLogic);
+    }
+    public RoomLogic GetRoomLogic(long roomId)
+    {
+        if (!Rooms.ContainsKey(roomId))
+            return null;
+        return Rooms[roomId];
+    }
+    #endregion
 }

@@ -1,5 +1,6 @@
-﻿using Protobuf.Room;
-using AI;
+﻿using System;
+using Protobuf.Room;
+
 namespace Actor
 {
     public class PlayerInfo
@@ -13,5 +14,7 @@ namespace Actor
         public bool IsCreatedByMe;
     
         public long RoomId;
+
+        public DateTime HeartBeatTime;
     }
 }

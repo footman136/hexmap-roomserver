@@ -104,4 +104,9 @@ public class ServerScript : MonoBehaviour {
     {
         _server.Log(msg);
     }
+
+    public void CloseASocket(SocketAsyncEventArgs args)
+    {
+        _server.CloseASocket(args);
+    }
 }

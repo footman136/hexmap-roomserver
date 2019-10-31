@@ -7,7 +7,6 @@ using System.Net;
 using System.Threading;
 using System;
 using System.Linq;
-using UnityEditor;
 
 /// <summary>
 ///    ————————————————
@@ -129,9 +128,16 @@ public class AsynSocketClient
         /// </summary>
         private void ReceiveAsync()
         {
-            StateObject obj = new StateObject();
-            obj.TcpClient = tcpClient;
-            tcpClient.Client.BeginReceive(obj.ListData, 0, obj.ListData.Length, SocketFlags.None, ReceiveCallBack, obj);
+            try
+            {
+                StateObject obj = new StateObject();
+                obj.TcpClient = tcpClient;
+                tcpClient.Client.BeginReceive(obj.ListData, 0, obj.ListData.Length, SocketFlags.None, ReceiveCallBack, obj);
+            }
+            catch (Exception e)
+            {
+                Log($"AsynSocketClient ReceiveAsync Exception - {e}");
+            }
         }
  
         private void ReceiveCallBack(IAsyncResult ar)
@@ -173,7 +179,7 @@ public class AsynSocketClient
                     // 真正的互联网环境下会有消息包被截断的情况，所以发送的时候必须在开始定义4个字节的包长度，目前是测试阶段，暂时不开放。
                     //读取数据  
                     byte[] data = new byte[count];
-                    Log($"Server Found data received - {count} byts");
+                    Log($"Client Found data received - {count} byts");
                     lock (m_buffer)  
                     {  
                         m_buffer.AddRange(state.ListData.Take<byte>(count).ToArray());  
@@ -195,7 +201,7 @@ public class AsynSocketClient
                                 m_buffer.RemoveRange(0, packageLen + 4);  
                             }  
                             //将数据包交给前台去处理
-                            string msg = $"Receive a message : {rev.Length} bytes";
+                            string msg = $"Receive a message : {rev.Length + 4} bytes";
                             OnComplete(state.TcpClient, SocketAction.Receive, msg);
                             DataEventArgs data2 = new DataEventArgs()
                             {
@@ -398,8 +404,10 @@ public class AsynSocketClient
 
         public void Log(string msg)
         {
-            if(LogEnabled)
-                Debug.Log(msg);
+            if (LogEnabled)
+            {
+                GameUtils.Utils.Log(msg);
+            }
         }
     }
  
