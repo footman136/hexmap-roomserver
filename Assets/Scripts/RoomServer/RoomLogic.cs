@@ -222,7 +222,7 @@ public class RoomLogic
         else
         {
             ActorManager.AddActor(input.RoomId, input.OwnerId, input.ActorId, input.PosX, input.PosZ,
-                input.Orientation, input.Species);
+                input.CellIndex, input.Orientation, input.Species, input.ActorInfoId);
             
             // 转发给房间内的所有玩家
             CreateATroopReply output = new CreateATroopReply()
@@ -233,7 +233,9 @@ public class RoomLogic
                 Orientation = input.Orientation,
                 PosX = input.PosX,
                 PosZ = input.PosZ,
+                CellIndex = input.CellIndex,
                 Species = input.Species,
+                ActorInfoId = input.ActorInfoId,
                 Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
@@ -272,7 +274,6 @@ public class RoomLogic
             PosFromZ = input.PosFromZ,
             PosToX = input.PosToX,
             PosToZ = input.PosToZ,
-            Speed = input.Speed,
             Ret = true,
         };
         BroadcastMsg(ROOM_REPLY.TroopMoveReply, output.ToByteArray());

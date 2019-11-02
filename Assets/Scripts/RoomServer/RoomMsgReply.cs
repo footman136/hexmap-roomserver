@@ -16,6 +16,7 @@ using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
 using RoomInfo = Protobuf.Room.RoomInfo;
 using GameUtils;
 using Actor;
+using AI;
 
 // https://github.com/LitJSON/litjson
 public class RoomMsgReply
@@ -321,15 +322,17 @@ public class RoomMsgReply
         // 最后一件事：把房间内已有的所有actor都发给本人
         foreach (var keyValue in roomLogic.ActorManager.AllActors)
         {
+            ActorBehaviour ab = keyValue.Value;
             CreateATroopReply output = new CreateATroopReply()
             {
-                RoomId = keyValue.Value.RoomId,
-                OwnerId = keyValue.Value.OwnerId,
-                ActorId = keyValue.Value.ActorId,
-                PosX = keyValue.Value.PosX,
-                PosZ = keyValue.Value.PosZ,
-                Orientation = keyValue.Value.Orientation,
-                Species = keyValue.Value.Species,
+                RoomId = ab.RoomId,
+                OwnerId = ab.OwnerId,
+                ActorId = ab.ActorId,
+                PosX = ab.PosX,
+                PosZ = ab.PosZ,
+                Orientation = ab.Orientation,
+                Species = ab.Species,
+                ActorInfoId = ab.ActorInfoId,
                 Ret = true,
             };
             RoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());

@@ -24,8 +24,10 @@ namespace AI
         public long ActorId;
         public int PosX;
         public int PosZ;
+        public int CellIndex;
         public float Orientation;
         public string Species = "N/A";
+        public int ActorInfoId;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -43,18 +45,23 @@ namespace AI
         
         #region 初始化
 
-        public void Init(long roomId, long ownerId, long actorId, int posX, int posZ, float orientation, string species)
+        public ActorBehaviour()
         {
-            Species = species;
             TIME_DELAY = 1f;
+            StateMachine = new StateMachineActor(this);
+        }
+
+        public void Init(long roomId, long ownerId, long actorId, int posX, int posZ, int cellIndex, float orientation, string species, int actorInfoId)
+        {
             RoomId = roomId;
             OwnerId = ownerId;
             ActorId = actorId;
             PosX = posX;
             PosZ = posZ;
+            CellIndex = cellIndex;
             Orientation = orientation;
             Species = species;
-            StateMachine = new StateMachineActor(this);
+            ActorInfoId = actorInfoId;
         }
         public void Fini()
         {

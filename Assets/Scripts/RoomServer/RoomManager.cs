@@ -13,6 +13,7 @@ using Google.Protobuf;
 public class RoomManager : MonoBehaviour
 {
     public static RoomManager Instance { get; private set; }
+    [Header("Server Attributes"), Space(5)]
     public ServerScript _server;
     public RedisManager _redis;
     public RedisManager Redis => _redis;
@@ -25,11 +26,15 @@ public class RoomManager : MonoBehaviour
     // 房间的集合，Key是房间的唯一ID
     private Dictionary<long, RoomLogic> Rooms { set; get; }
 
+    [Header("Basic Attributes"), Space(5)]
     public string ServerName;
     public long ServerId;
     public int MaxRoomCount;
     public int CurRoomCount;
     public int MaxPlayerPerRoom;
+    
+    [Space(), Header("Debug"), Space(5)]
+    public bool IsCheckHeartBeat;
     
     private const float _heartBeatTimeInterval = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
 
@@ -80,7 +85,10 @@ public class RoomManager : MonoBehaviour
         receive_str = $"Server started! {_server.Address}:{_server.Port}";
         // RoomServer已经启动成功，开始监听了，进入Connecting阶段，开始连接大厅服务器
         ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
-        StartCheckHeartBeat(); //监听心跳
+        if (IsCheckHeartBeat)
+        {
+            StartCheckHeartBeat(); //监听心跳
+        }
     }
 
     void OnGUI()
