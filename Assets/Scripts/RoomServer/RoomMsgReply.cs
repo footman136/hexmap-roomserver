@@ -340,6 +340,8 @@ public class RoomMsgReply
     
     private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
     {
+        bool ret = false;
+        string errMsg = "";
         EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
         RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic == null)
@@ -348,24 +350,25 @@ public class RoomMsgReply
             if (roomLogic != null)
             {
                 string tableName = $"MAP:{input.RoomId}";
-                long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
-                RoomInfo roomInfo = new RoomInfo()
+                if(RoomManager.Instance.Redis.CSRedis.Exists(tableName))
                 {
-                    RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
-                    MaxPlayerCount =
-                        RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
-                    RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
-                    Creator = createrId,
-                };
-                // 初始化
-                roomLogic.Init(roomInfo);
-                RoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
+                    long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
+                    RoomInfo roomInfo = new RoomInfo()
+                    {
+                        RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
+                        MaxPlayerCount =
+                            RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
+                        RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
+                        Creator = createrId,
+                    };
+                    // 初始化
+                    roomLogic.Init(roomInfo);
+                    RoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
+                }
             }
         }
 
-        bool ret = false;
-        string errMsg = "";
-        if (roomLogic != null )
+        if (roomLogic != null)
         {
             PlayerInfo pi = RoomManager.Instance.GetPlayer(args);
             if (pi != null)
@@ -405,7 +408,7 @@ public class RoomMsgReply
         }
         else
         {
-            errMsg = "房间没有找到！";
+            errMsg = $"房间没有找到！RoomId:{input.RoomId}";
         }
         {   // 返回失败
             EnterRoomReply output = new EnterRoomReply()
