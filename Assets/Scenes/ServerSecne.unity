@@ -368,7 +368,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56d6cb00b4f0aa54584cf395cc93cc00, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _address: 192.168.137.1
+  _address: 192.168.3.4
   _port: 9999
 --- !u!4 &1280409925
 Transform:
@@ -600,6 +600,7 @@ MonoBehaviour:
   MaxRoomCount: 0
   CurRoomCount: 0
   MaxPlayerPerRoom: 0
+  IsCheckHeartBeat: 0
 --- !u!4 &1882277145
 Transform:
   m_ObjectHideFlags: 0
@@ -640,5 +641,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 023a165274188ac48984704cb9b383bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PORT: 8888
+  PORT: 8889
   IsReady: 0
