@@ -84,7 +84,7 @@ public class RoomManager : MonoBehaviour
        
         receive_str = $"Server started! {_server.Address}:{_server.Port}";
         // RoomServer已经启动成功，开始监听了，进入Connecting阶段，开始连接大厅服务器
-        ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
+        MainManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
         if (IsCheckHeartBeat)
         {
             StartCheckHeartBeat(); //监听心跳
@@ -263,7 +263,7 @@ public class RoomManager : MonoBehaviour
                     RoomId = roomLogic.RoomId,
                     IsRemove = true,
                 };
-                ClientManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                MainManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
             }
             else
             {

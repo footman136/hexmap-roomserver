@@ -6,9 +6,9 @@ using Main;
 
 public class GameRoomState : FsmBaseState<ConnectionStateMachine, ConnectionFSMStateEnum.StateEnum>
 {
-    private readonly ClientManager _game;
+    private readonly MainManager _game;
 
-    public GameRoomState(ConnectionStateMachine owner, ClientManager game) : base(owner)
+    public GameRoomState(ConnectionStateMachine owner, MainManager game) : base(owner)
     {
         _game = game;
     }

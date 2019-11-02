@@ -8,8 +8,9 @@ using System.Security.Cryptography;
 
 namespace GameUtils
 {
-	public class Utils  
+	public class Utils
 	{
+		private static object _lockObj = new object();
 		/// <summary>  
 		/// 根据GUID获取19位的唯一数字序列  
 		/// </summary>  
@@ -73,20 +74,25 @@ namespace GameUtils
 		/// <param name="msg"></param>
 		public static void Log(string msg)
 		{
-			Debug.Log(msg);
-			if (string.IsNullOrEmpty(_logPathName))
+			lock (_lockObj)
 			{
-				return;
+				Debug.Log(msg);
+				if (string.IsNullOrEmpty(_logPathName))
+				{
+					return;
+				}
+
+				string logpathname = _logPathName;
+				FileStream fs = new FileStream(logpathname, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+					FileShare.Read);
+				StreamWriter sw = new StreamWriter(fs);
+				sw.Flush();
+				sw.BaseStream.Seek(0, SeekOrigin.End);
+				sw.WriteLine(msg);
+				sw.Flush();
+				sw.Close();
+				fs.Close();
 			}
-			string logpathname = _logPathName;
-			FileStream fs = new FileStream (logpathname, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
-			StreamWriter sw = new StreamWriter(fs);
-			sw.Flush();
-			sw.BaseStream.Seek(0, SeekOrigin.End);
-			sw.WriteLine(msg);
-			sw.Flush();
-			sw.Close();
-			fs.Close();
 		}
 	
 		/// <summary>
@@ -98,6 +104,44 @@ namespace GameUtils
 			if (File.Exists(logpathname))
 			{
 				File.Delete(logpathname);
+			}
+		}
+
+
+		/// <summary>
+		/// 递归获取指定类型文件,包含子文件夹
+		/// </summary>
+		/// <param name="path">要查找的路径</param>
+		/// <param name="extName">要查找的文件的后缀,必须写成通配符,例如:*.csv</param>
+		/// <param name="lstFiles">输出:得到的所有文件名链表</param>
+		public static void GetDir(string path, string extName, ref List<string> lstFiles)
+		{
+			try
+			{
+				string[] dir = Directory.GetDirectories(path); //文件夹列表   
+				DirectoryInfo fdir = new DirectoryInfo(path);
+				FileInfo[] file = fdir.GetFiles();
+				//FileInfo[] file = Directory.GetFiles(path); //文件列表   
+				if (file.Length != 0 || dir.Length != 0) //当前目录文件或文件夹不为空                   
+				{
+					foreach (FileInfo f in file) //显示当前目录所有文件   
+					{
+						if (extName.ToLower().IndexOf(f.Extension.ToLower(), StringComparison.Ordinal) >= 0)
+						{
+							string fullname = f.FullName.Replace('\\', '/'); // 替换成为linux格式(尽量不使用Windows格式)
+							lstFiles.Add(fullname);
+						}
+					}
+
+					foreach (string d in dir)
+					{
+						GetDir(d, extName, ref lstFiles); //递归   
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError(ex);
 			}
 		}
 	}

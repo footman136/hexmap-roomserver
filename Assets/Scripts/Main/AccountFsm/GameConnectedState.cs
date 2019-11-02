@@ -6,9 +6,9 @@ using Main;
 
 public class GameConnectedState : FsmBaseState<ConnectionStateMachine, ConnectionFSMStateEnum.StateEnum>
 {
-    private readonly ClientManager _game;
+    private readonly MainManager _game;
 
-    public GameConnectedState(ConnectionStateMachine owner, ClientManager game) : base(owner)
+    public GameConnectedState(ConnectionStateMachine owner, MainManager game) : base(owner)
     {
         _game = game;
     }
@@ -23,7 +23,7 @@ public class GameConnectedState : FsmBaseState<ConnectionStateMachine, Connectio
     {
         if (_bFirst)
         { // 只运行一帧，就切换到下个状态了
-            ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.ROOM);
+            MainManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.ROOM);
             _bFirst = false;
         }
     }

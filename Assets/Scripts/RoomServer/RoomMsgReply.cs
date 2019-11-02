@@ -396,7 +396,7 @@ public class RoomMsgReply
                     IsRunning = true,
                     IsRemove = false,
                 };
-                ClientManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                MainManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
                 // 返回成功
                 EnterRoomReply output = new EnterRoomReply()
                 {

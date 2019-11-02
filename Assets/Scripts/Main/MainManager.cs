@@ -4,24 +4,25 @@ using UnityEngine;
 
 namespace Main
 {
-    public class ClientManager : MonoBehaviour
+    public class MainManager : MonoBehaviour
     {
         // 状态机
         private ConnectionStateMachine _stateMachine;
         public ConnectionStateMachine StateMachine => _stateMachine;
 
         // 客户端网络链接-大厅
-        [SerializeField] private GameLobbyManager _lobbyManager;
-        public GameLobbyManager LobbyManager => _lobbyManager;
+        public GameLobbyManager LobbyManager;
 
-        public static ClientManager Instance { private set; get; }
+        public CsvDataManager CsvDataManager;
+
+        public static MainManager Instance { private set; get; }
 
         void Awake()
         {
             if(Instance != null)
                 Debug.LogError("ClientManager is Singleton! Cannot be created again!");
             Instance = this;
-            _lobbyManager.gameObject.SetActive(false);
+            LobbyManager.gameObject.SetActive(false);
             DontDestroyOnLoad(gameObject);
         }
 

@@ -7,9 +7,9 @@ using UnityEditor.PackageManager;
 
 public class GameDisconnectedState : FsmBaseState<ConnectionStateMachine, ConnectionFSMStateEnum.StateEnum>
 {
-    private readonly ClientManager _game;
+    private readonly MainManager _game;
 
-    public GameDisconnectedState(ConnectionStateMachine owner, ClientManager game) : base(owner)
+    public GameDisconnectedState(ConnectionStateMachine owner, MainManager game) : base(owner)
     {
         _game = game;
     }
@@ -25,7 +25,7 @@ public class GameDisconnectedState : FsmBaseState<ConnectionStateMachine, Connec
         if (isFirst)
         {
             isFirst = false;
-            ClientManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.ROOM);
+            MainManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.ROOM);
         }
     }
 

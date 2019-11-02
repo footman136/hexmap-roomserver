@@ -6,11 +6,11 @@ using Main;
 
 public class GameStartState : FsmBaseState<ConnectionStateMachine, ConnectionFSMStateEnum.StateEnum>
 {
-    private readonly ClientManager _game;
+    private readonly MainManager _game;
 
     private GameObject _panelLogin;
 
-    public GameStartState(ConnectionStateMachine owner, ClientManager game) : base(owner)
+    public GameStartState(ConnectionStateMachine owner, MainManager game) : base(owner)
     {
         _game = game;
     }
