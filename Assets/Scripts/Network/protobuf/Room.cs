@@ -5460,7 +5460,7 @@ namespace Protobuf.Room {
     public const int CitySizeFieldNumber = 8;
     private int citySize_;
     /// <summary>
-    ///bool IsCapital = 9; 是否是都城，由服务器来算，暂时不需要客户端来传
+    ///bool IsCapital = 9; 鏄惁鏄兘鍩庯紝鐢辨湇鍔″櫒鏉ョ畻锛屾殏鏃朵笉闇�瑕佸鎴风鏉ヤ紶
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int CitySize {

@@ -365,6 +365,10 @@ public class RoomMsgReply
                     roomLogic.Init(roomInfo);
                     RoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
                 }
+                else
+                {// 房间地图数据没有找到，等于没有创建房间
+                    roomLogic = null;
+                }
             }
         }
 
@@ -429,6 +433,7 @@ public class RoomMsgReply
         RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic != null)
         {
+            UIManager.Instance.EndLoading();
             string account = roomLogic.GetPlayer(args)?.Enter.Account;
             RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
             RoomManager.Instance.RemovePlayer(args, input.ReleaseIfNoUser);
