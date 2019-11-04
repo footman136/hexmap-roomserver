@@ -247,14 +247,14 @@ public class RoomLogic
         if (input.RoomId != _roomId)
             return;
         
-        ActorManager.RemoveActor(input.ActorId);
+        bool ret = ActorManager.RemoveActor(input.ActorId);
         
         DestroyATroopReply output = new DestroyATroopReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             ActorId = input.ActorId,
-            Ret = true,
+            Ret = ret,
         };
         BroadcastMsg(ROOM_REPLY.DestroyAtroopReply, output.ToByteArray());
     }
@@ -396,14 +396,14 @@ public class RoomLogic
         CityRemove input = CityRemove.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
+        bool ret = UrbanManager.RemoveCity(input.CityId);
         CityRemoveReply output = new CityRemoveReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             CityId = input.CityId,
-            Ret = true,
+            Ret = ret,
         };
-        UrbanManager.RemoveCity(input.CityId);
         BroadcastMsg(ROOM_REPLY.CityRemoveReply, output.ToByteArray());
     }
         

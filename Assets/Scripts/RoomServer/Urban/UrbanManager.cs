@@ -23,13 +23,16 @@ public class UrbanManager
         }
     }
 
-    public void RemoveCity(long cityId)
+    public bool RemoveCity(long cityId)
     {
         if (Cities.ContainsKey(cityId))
         {
             var city = Cities[cityId];
             Cities.Remove(cityId);
+            return true;
         }
+
+        return false;
     }
 
     public int GetMyCityCount(long ownerId)

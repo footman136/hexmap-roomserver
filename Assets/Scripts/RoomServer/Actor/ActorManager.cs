@@ -19,14 +19,17 @@ namespace AI
             _allActors.Add(actorId, ab);
         }
 
-        public void RemoveActor(long actorId)
+        public bool RemoveActor(long actorId)
         {
             if (_allActors.ContainsKey(actorId))
             {
                 var actor = _allActors[actorId];
                 actor.Fini();
                 _allActors.Remove(actorId);
+                return true;
             }
+
+            return false;
         }
 
         public ActorBehaviour GetPlayer(long actorId)
