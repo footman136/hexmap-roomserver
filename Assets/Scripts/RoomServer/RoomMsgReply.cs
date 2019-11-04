@@ -98,19 +98,19 @@ public class RoomMsgReply
         {
             Enter = input,
         };
-        RoomManager.Instance.AddPlayer(_args, pi);
-        RoomManager.Instance.Log($"MSG: PLAYER_ENTER - 玩家登录房间服务器 - {input.Account}");
+        ServerRoomManager.Instance.AddPlayer(_args, pi);
+        ServerRoomManager.Instance.Log($"MSG: PLAYER_ENTER - 玩家登录房间服务器 - {input.Account}");
 
         PlayerEnterReply output = new PlayerEnterReply()
         {
             Ret = true,
         };
-        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+        ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
     }
 
     private static void HEART_BEAT(byte[] byts)
     {
-        var pi = RoomManager.Instance.GetPlayer(_args);
+        var pi = ServerRoomManager.Instance.GetPlayer(_args);
         if (pi != null)
         {
             pi.HeartBeatTime = DateTime.Now;
@@ -125,7 +125,7 @@ public class RoomMsgReply
         if (input.PackageIndex == 0)
         {// 第一条此类消息
             mapDataBuffers.Clear();
-            RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 开始上传地图数据！地图名{input.RoomName}");
+            ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP - 开始上传地图数据！地图名{input.RoomName}");
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
@@ -150,25 +150,25 @@ public class RoomMsgReply
                 position += package.Length;
             }
 
-            PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
+            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
             if (pi == null)
             {
-                RoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
+                ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
                 ret = false;
             }
             else
             {
                 ret = true;
                 string tableName = $"MAP:{roomId}";
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapDataSize", totalSize);
-                RoomManager.Instance.Redis.CSRedis.HSet(tableName, "CreateTime", DateTime.Now);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", pi.Enter.TokenId);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomId);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", input.RoomName);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", input.MaxPlayerCount);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapDataSize", totalSize);
+                ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "CreateTime", DateTime.Now);
 
-                RoomManager.Instance.Log($"MSG: UPLOAD_MAP - 上传地图数据，并保存到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+                ServerRoomManager.Instance.Log($"MSG: UPLOAD_MAP - 上传地图数据，并保存到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
             }
             
         }
@@ -179,95 +179,95 @@ public class RoomMsgReply
             RoomId = roomId,
             RoomName = input.RoomName,
         };
-        RoomManager.Instance.SendMsg(_args, ROOM_REPLY.UploadMapReply, output.ToByteArray());
+        ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.UploadMapReply, output.ToByteArray());
     }
 
     private static void DOWNLOAD_MAP(byte[] bytes)
     {
         DownloadMap input = DownloadMap.Parser.ParseFrom(bytes);
         string tableName = $"MAP:{input.RoomId}";
-        if (!RoomManager.Instance.Redis.CSRedis.Exists(tableName))
+        if (!ServerRoomManager.Instance.Redis.CSRedis.Exists(tableName))
         {
             string msg = $"Redis中没有找到地图表格 - {tableName}";
-            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
                 Ret = false,
                 ErrMsg = msg,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
         
         //////////////
         // 校验地图的RoomId是否和Redis中保存的一致        
-        long roomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId");
+        long roomId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId");
         if (roomId != input.RoomId)
         {
             string msg = $"从Redis中读取地图数据失败！roomId不匹配！传来的RoomId:{input.RoomId} - Redis中保存的RoomId:{roomId}";
-            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
                 Ret = false,
                 ErrMsg = msg,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
-        string roomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName");
+        string roomName = ServerRoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName");
         
         //////////////
         // 计算这张地图是不是我自己创建的
-        PlayerInfo pi = RoomManager.Instance.GetPlayer(_args);
+        PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
         if (pi == null)
         {
             string msg = $"从Redis中读取地图数据失败！我自己并没有在房间服务器！地图名:{roomName} - RoomId:{roomId}";
-            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
                 Ret = false,
                 ErrMsg = msg,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
-        long TokenId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
+        long TokenId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
         bool IsCreateByMe = TokenId == pi.Enter.TokenId;
         
         //////////////
         // 其他数据
-        int maxPlayerCount = RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount");
+        int maxPlayerCount = ServerRoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount");
 
         //////////////
         // 读取地图数据
-        byte[] totalData = RoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, "MapData");
+        byte[] totalData = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, "MapData");
         int totalSize = totalData.Length;
         
         //////////////
         // 服务器把这份数据留起来自己用——这部分代码暂时无效
-        var roomLogic = RoomManager.Instance.GetRoomLogic(roomId);
+        var roomLogic = ServerRoomManager.Instance.GetRoomLogic(roomId);
         if (roomLogic == null)
         {
             string msg = ($"该房间尚未创建或者已经被销毁！地图名:{roomName} - RoomId:{roomId}");
-            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
                 Ret = false,
                 ErrMsg = msg,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
         if (!roomLogic.SetMap(totalData))
         {
             string msg = ($"地图数据不合法，可能已经被损坏！地图名:{roomName} - RoomId:{roomId}");
-            RoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
+            ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
                 Ret = false,
                 ErrMsg = msg,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
             return;
         }
 
@@ -297,7 +297,7 @@ public class RoomMsgReply
             output.MapData = ByteString.CopyFrom(sendBytes);
             position += CHUNK_SIZE;
             remainSize -= CHUNK_SIZE;
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
         }
 
         {
@@ -316,7 +316,7 @@ public class RoomMsgReply
             output.MapData = ByteString.CopyFrom(sendBytes);
             position += remainSize;
             remainSize -= remainSize;
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
         }
         
         // 最后一件事：把房间内已有的所有actor都发给本人
@@ -335,10 +335,10 @@ public class RoomMsgReply
                 ActorInfoId = ab.ActorInfoId,
                 Ret = true,
             };
-            RoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
         }
         
-        RoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
+        ServerRoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
     
     private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
@@ -346,27 +346,27 @@ public class RoomMsgReply
         bool ret = false;
         string errMsg = "";
         EnterRoom input = EnterRoom.Parser.ParseFrom(bytes);
-        RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
+        RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic == null)
         { // 房间没有开启，需要开启并进入
             roomLogic = new RoomLogic();
             if (roomLogic != null)
             {
                 string tableName = $"MAP:{input.RoomId}";
-                if(RoomManager.Instance.Redis.CSRedis.Exists(tableName))
+                if(ServerRoomManager.Instance.Redis.CSRedis.Exists(tableName))
                 {
-                    long createrId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
+                    long createrId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
                     RoomInfo roomInfo = new RoomInfo()
                     {
-                        RoomId = RoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
+                        RoomId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
                         MaxPlayerCount =
-                            RoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
-                        RoomName = RoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
+                            ServerRoomManager.Instance.Redis.CSRedis.HGet<int>(tableName, "MaxPlayerCount"),
+                        RoomName = ServerRoomManager.Instance.Redis.CSRedis.HGet<string>(tableName, "RoomName"),
                         Creator = createrId,
                     };
                     // 初始化
                     roomLogic.Init(roomInfo);
-                    RoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
+                    ServerRoomManager.Instance.AddRoomLogic(roomInfo.RoomId, roomLogic);
                 }
                 else
                 {// 房间地图数据没有找到，等于没有创建房间
@@ -377,13 +377,13 @@ public class RoomMsgReply
 
         if (roomLogic != null)
         {
-            PlayerInfo pi = RoomManager.Instance.GetPlayer(args);
+            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(args);
             if (pi != null)
             {
                 ret = true;
                 roomLogic.AddPlayer(args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
-                RoomManager.Instance.SetPlayerInfo(args, pi);
+                ServerRoomManager.Instance.SetPlayerInfo(args, pi);
             
                 // 通知大厅
                 UpdateRoomInfo output2 = new UpdateRoomInfo()
@@ -396,7 +396,7 @@ public class RoomMsgReply
                     IsRunning = true,
                     IsRemove = false,
                 };
-                MainManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                MixedManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
                 // 返回成功
                 EnterRoomReply output = new EnterRoomReply()
                 {
@@ -404,8 +404,8 @@ public class RoomMsgReply
                     RoomId = roomLogic.RoomId,
                     RoomName = roomLogic.RoomName,
                 };
-                RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
-                RoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
+                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+                ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
                 return;
             }
             else
@@ -423,8 +423,8 @@ public class RoomMsgReply
                 Ret = false,
                 ErrMsg = errMsg,
             };
-            RoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
-            RoomManager.Instance.Log("MSG: ENTER_ROOM - "+errMsg);
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log("MSG: ENTER_ROOM - "+errMsg);
         }
     }
 
@@ -433,25 +433,25 @@ public class RoomMsgReply
         LeaveRoom input = LeaveRoom.Parser.ParseFrom(bytes);
 
         bool ret = false;
-        RoomLogic roomLogic = RoomManager.Instance.GetRoomLogic(input.RoomId);
+        RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic != null)
         {
             UIManager.Instance.EndLoading();
             string account = roomLogic.GetPlayer(args)?.Enter.Account;
-            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
-            RoomManager.Instance.RemovePlayer(args, input.ReleaseIfNoUser);
+            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
+            ServerRoomManager.Instance.RemovePlayer(args, input.ReleaseIfNoUser);
             ret = true;
         }
         else
         {
-            RoomManager.Instance.Log($"MSG: LEAVE_ROOM - room not found! RoomId:{input.RoomId}");                
+            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM - room not found! RoomId:{input.RoomId}");                
         }
 
         LeaveRoomReply output = new LeaveRoomReply()
         {
             Ret = ret,
         };
-        RoomManager.Instance.SendMsg(args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
+        ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
     }
     #endregion
 }

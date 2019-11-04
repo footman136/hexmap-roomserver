@@ -15,7 +15,7 @@ public class UrbanManager
     {
         if (Cities.ContainsKey(city.CityId))
         {
-            RoomManager.Instance.Log("MSG: Duplicated city!");
+            ServerRoomManager.Instance.Log("MSG: Duplicated city!");
         }
         else
         {
@@ -78,7 +78,7 @@ public class UrbanManager
         int cityCount = br.ReadInt32();
         if (cityCount < 0 || cityCount > 9999)
         {
-            RoomManager.Instance.Log($"UrbanManager - LoadBuffer Error - count of cities is invalid: {cityCount} - should between:{0}~{9999}");
+            ServerRoomManager.Instance.Log($"UrbanManager - LoadBuffer Error - count of cities is invalid: {cityCount} - should between:{0}~{9999}");
             return false;
         }
 
@@ -88,7 +88,7 @@ public class UrbanManager
             int index = br.ReadInt32();
             if (index != i)
             {
-                RoomManager.Instance.Log($"UrbanManager - LoadBuffer Error - city index is not valid:{index}- should between:{0}~{cityCount}");
+                ServerRoomManager.Instance.Log($"UrbanManager - LoadBuffer Error - city index is not valid:{index}- should between:{0}~{cityCount}");
                 return false;
             }
 
@@ -106,7 +106,7 @@ public class UrbanManager
             };
             AddCity(city);
         }
-        RoomManager.Instance.Log($"UrbanManager LoadBuffer - 城市个数：{Cities.Count}");
+        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer - 城市个数：{Cities.Count}");
 
         return true;
     }

@@ -4,6 +4,7 @@ using UnityEngine;
 // https://github.com/LitJSON/litjson
 using LitJson;
 using System;
+using GameUtils;
 using Google.Protobuf;
 
 // https://blog.csdn.net/u014308482/article/details/52958148
@@ -16,6 +17,14 @@ public class GameLobbyManager : ClientScript
     // Start is called before the first frame update
     void Start()
     {
+        // 从[server_config]表里读取服务器地址和端口
+        var csv = CsvDataManager.Instance.GetTable("server_config");
+        if (csv != null)
+        {
+            _address = csv.GetValue(1, "LobbyServerAddress");
+            _port = csv.GetValueInt(1, "LobbyServerPort");
+        }
+
         Debug.Log("GameLobbyManager.Start()");
         base.Start();
 
@@ -81,12 +90,12 @@ public class GameLobbyManager : ClientScript
                 // RoomServer向LobbyServer发送第一条消息，登录该RoomServer
                 RoomServerLogin data = new RoomServerLogin()
                 {
-                    ServerName = RoomManager.Instance.ServerName,
-                    ServerId = RoomManager.Instance.ServerId,
-                    MaxRoomCount = RoomManager.Instance.MaxRoomCount,
-                    MaxPlayerPerRoom = RoomManager.Instance.MaxPlayerPerRoom,
-                    Address = RoomManager.Instance._server.Address,
-                    Port = RoomManager.Instance._server.Port,
+                    ServerName = ServerRoomManager.Instance.ServerName,
+                    ServerId = ServerRoomManager.Instance.ServerId,
+                    MaxRoomCount = ServerRoomManager.Instance.MaxRoomCount,
+                    MaxPlayerPerRoom = ServerRoomManager.Instance.MaxPlayerPerRoom,
+                    Address = ServerRoomManager.Instance._server.Address,
+                    Port = ServerRoomManager.Instance._server.Port,
                 };
                 SendMsg(LOBBY.RoomServerLogin, data.ToByteArray());
                 StartHeartBeat();

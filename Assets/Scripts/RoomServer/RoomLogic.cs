@@ -96,7 +96,7 @@ public class RoomLogic
         PlayerInfo pi = GetPlayer(args);
         if (pi == null)
         {
-            RoomManager.Instance.Log("RoomLogic SavePlayer Error - player not found!");
+            ServerRoomManager.Instance.Log("RoomLogic SavePlayer Error - player not found!");
             return;
         }
 
@@ -106,13 +106,13 @@ public class RoomLogic
         byte[] cityBytes = UrbanManager.SaveBuffer();
         if (cityBytes.Length > 1024 * 8)
         {
-            RoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
+            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
         }
 
         string tableName = $"MAP:{RoomId}";
         string keyName = $"Cities";
-        RoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
-        RoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
+        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
     }
 
     public void LoadPlayer(SocketAsyncEventArgs args)
@@ -120,7 +120,7 @@ public class RoomLogic
         PlayerInfo pi = GetPlayer(args);
         if (pi == null)
         {
-            RoomManager.Instance.Log("LoadPlayer Error - player not found!");
+            ServerRoomManager.Instance.Log("LoadPlayer Error - player not found!");
             return;
         }
 
@@ -128,16 +128,16 @@ public class RoomLogic
         
         string tableName = $"MAP:{RoomId}";
         string keyName = $"Cities";
-        byte[] cityBytes = RoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        byte[] cityBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (cityBytes != null)
         {
             if (!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length))
             {
-                RoomManager.Instance.Log("RoomLogic LoadPlayer Error - LoadBuffer Failed!");
+                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - LoadBuffer Failed!");
             }
             else
             {
-                RoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
+                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
             }
         }
     }
@@ -170,7 +170,7 @@ public class RoomLogic
         }
         else
         {
-            RoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
+            ServerRoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
         }
         _curPlayerCount = Players.Count;
     }
@@ -198,7 +198,7 @@ public class RoomLogic
     {
         foreach (var keyPair in Players)
         {
-            RoomManager.Instance.SendMsg(keyPair.Key, msgId, output);
+            ServerRoomManager.Instance.SendMsg(keyPair.Key, msgId, output);
         }
     }
     
@@ -216,8 +216,8 @@ public class RoomLogic
             {
                 Ret = false,
             };
-            RoomManager.Instance.SendMsg(args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
-            RoomManager.Instance.Log($"MSG: CreateATroop - 当前玩家不在本房间！房间名:{RoomName} - 玩家个数:{Players.Count}");
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log($"MSG: CreateATroop - 当前玩家不在本房间！房间名:{RoomName} - 玩家个数:{Players.Count}");
         }
         else
         {
@@ -314,7 +314,7 @@ public class RoomLogic
                 OwnerId = input.OwnerId,
                 Ret = false,
             };
-            RoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
             return;
         }
 
@@ -339,7 +339,7 @@ public class RoomLogic
                 IsCapital = city.IsCapital,
                 Ret = true,
             }; 
-            RoomManager.Instance.SendMsg(args, ROOM_REPLY.CityAddReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.CityAddReply, output.ToByteArray());
         }
 
         {
@@ -352,7 +352,7 @@ public class RoomLogic
                 CapitalCityId = capitalCityId,
                 Ret = true,
             };
-            RoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.AskForCitiesReply, output.ToByteArray());
         }
     }
 

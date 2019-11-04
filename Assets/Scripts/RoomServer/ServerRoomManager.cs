@@ -10,9 +10,9 @@ using Protobuf.Room;
 using Actor;
 using Google.Protobuf;
 
-public class RoomManager : MonoBehaviour
+public class ServerRoomManager : MonoBehaviour
 {
-    public static RoomManager Instance { get; private set; }
+    public static ServerRoomManager Instance { get; private set; }
     [Header("Server Attributes"), Space(5)]
     public ServerScript _server;
     public RedisManager _redis;
@@ -84,7 +84,7 @@ public class RoomManager : MonoBehaviour
        
         receive_str = $"Server started! {_server.Address}:{_server.Port}";
         // RoomServer已经启动成功，开始监听了，进入Connecting阶段，开始连接大厅服务器
-        MainManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
+        MixedManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTING);
         if (IsCheckHeartBeat)
         {
             StartCheckHeartBeat(); //监听心跳
@@ -238,7 +238,7 @@ public class RoomManager : MonoBehaviour
     
     public void AddPlayer(SocketAsyncEventArgs args, PlayerInfo pi)
     {
-        RoomManager.Instance.Players[args] = pi;
+        ServerRoomManager.Instance.Players[args] = pi;
     }
     public void RemovePlayer(SocketAsyncEventArgs args, bool bCloseRoomIfNoUser)
     {
@@ -263,7 +263,7 @@ public class RoomManager : MonoBehaviour
                     RoomId = roomLogic.RoomId,
                     IsRemove = true,
                 };
-                MainManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
             }
             else
             {

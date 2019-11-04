@@ -9,12 +9,12 @@ using Main;
 /// </summary>
 public class ConnectionStateMachine : FiniteStateMachine<ConnectionFSMStateEnum.StateEnum>
 {
-    private MainManager _game;
+    private MixedManager _game;
     public ConnectionFSMStateEnum.StateEnum CurrentState { private set; get; }
     public float _startTime; // 本状态开始的时间
     [SerializeField] private bool logChanges = true;
     
-    public ConnectionStateMachine(MainManager game)
+    public ConnectionStateMachine(MixedManager game)
     {
         _game = game;
             

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Main
 {
-    public class MainManager : MonoBehaviour
+    public class MixedManager : MonoBehaviour
     {
         // 状态机
         private ConnectionStateMachine _stateMachine;
@@ -12,10 +12,14 @@ namespace Main
 
         // 客户端网络链接-大厅
         public GameLobbyManager LobbyManager;
+        // 房间服务器自身
+        public ServerRoomManager RoomManager;
 
+        // 数据表
+        [HideInInspector]
         public CsvDataManager CsvDataManager;
 
-        public static MainManager Instance { private set; get; }
+        public static MixedManager Instance { private set; get; }
 
         void Awake()
         {
@@ -23,7 +27,10 @@ namespace Main
                 Debug.LogError("ClientManager is Singleton! Cannot be created again!");
             Instance = this;
             LobbyManager.gameObject.SetActive(false);
-            DontDestroyOnLoad(gameObject);
+            
+            // 读取数据表
+            CsvDataManager = gameObject.AddComponent<CsvDataManager>();
+            CsvDataManager.LoadDataAll();
         }
 
         // Start is called before the first frame update

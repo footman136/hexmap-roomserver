@@ -226,7 +226,7 @@ public class HexmapHelper : MonoBehaviour
         }
         else
         {
-            RoomManager.Instance.Log($"HexmapHelper ：创建Actor失败！原来这个格子没有物体，现在有了物体 - <{posX},{posZ}> - {unitName}");
+            ServerRoomManager.Instance.Log($"HexmapHelper ：创建Actor失败！原来这个格子没有物体，现在有了物体 - <{posX},{posZ}> - {unitName}");
         }
 
         return false;
