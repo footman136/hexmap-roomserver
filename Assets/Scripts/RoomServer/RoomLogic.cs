@@ -22,7 +22,6 @@ public class RoomLogic
 
     private int _curPlayerCount;
 
-    public HexmapHelper HexmapHelper = new HexmapHelper();
     public ActorManager ActorManager = new ActorManager();
     public UrbanManager UrbanManager = new UrbanManager();
     
@@ -113,6 +112,17 @@ public class RoomLogic
         string keyName = $"Cities";
         ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
         ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
+        
+        // 保存该玩家的单元数据
+        byte[] actorBytes = ActorManager.SaveBuffer();
+        if (actorBytes.Length > 1024 * 32)
+        {
+            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{actorBytes.Length} bytes");
+        }
+        tableName = $"MAP:{RoomId}";
+        keyName = $"Actors";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, actorBytes );
+        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{ActorManager.AllActors.Count}");
     }
 
     public void LoadPlayer(SocketAsyncEventArgs args)
@@ -126,6 +136,7 @@ public class RoomLogic
 
         long ownerId = pi.Enter.TokenId;
         
+        // 读取该玩家的城市数据
         string tableName = $"MAP:{RoomId}";
         string keyName = $"Cities";
         byte[] cityBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
@@ -133,11 +144,27 @@ public class RoomLogic
         {
             if (!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length))
             {
-                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - LoadBuffer Failed!");
+                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - City LoadBuffer Failed!");
             }
             else
             {
                 ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
+            }
+        }
+        
+        // 读取该玩家的单元数据
+        tableName = $"MAP:{RoomId}";
+        keyName = $"Actors";
+        byte[] actorBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        if (actorBytes != null)
+        {
+            if (!ActorManager.LoadBuffer(actorBytes, actorBytes.Length))
+            {
+                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - Actor LoadBuffer Failed!");
+            }
+            else
+            {
+                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 单元个数：{ActorManager.AllActors.Count}");
             }
         }
     }
@@ -221,21 +248,43 @@ public class RoomLogic
         }
         else
         {
-            ActorManager.AddActor(input.RoomId, input.OwnerId, input.ActorId, input.PosX, input.PosZ,
-                input.CellIndex, input.Orientation, input.Species, input.ActorInfoId);
-            
-            // 转发给房间内的所有玩家
-            CreateATroopReply output = new CreateATroopReply()
+            ActorBehaviour ab = new ActorBehaviour()
             {
                 RoomId = input.RoomId,
                 OwnerId = input.OwnerId,
                 ActorId = input.ActorId,
-                Orientation = input.Orientation,
                 PosX = input.PosX,
                 PosZ = input.PosZ,
                 CellIndex = input.CellIndex,
+                Orientation = input.Orientation,
                 Species = input.Species,
                 ActorInfoId = input.ActorInfoId,
+            };
+            ab.LoadFromTable(out ab.Name, out ab.Hp, out ab.AttackPower, out ab.DefencePower, 
+                out ab.Speed, out ab.FieldOfVision, out ab.ShootingRange);
+            ActorManager.AddActor(ab);
+            
+            // 转发给房间内的所有玩家
+            CreateATroopReply output = new CreateATroopReply()
+            {
+                RoomId = ab.RoomId,
+                OwnerId = ab.OwnerId,
+                ActorId = ab.ActorId,
+                Orientation = ab.Orientation,
+                PosX = ab.PosX,
+                PosZ = ab.PosZ,
+                CellIndex = ab.CellIndex,
+                Species = ab.Species,
+                ActorInfoId = ab.ActorInfoId,
+                
+                Name = ab.Name,
+                Hp = ab.Hp,
+                AttackPower = ab.AttackPower,
+                DefencePower = ab.DefencePower,
+                Speed = ab.Speed,
+                FieldOfVision = ab.FieldOfVision,
+                ShootingRange = ab.ShootingRange,
+                
                 Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
@@ -284,19 +333,31 @@ public class RoomLogic
         TroopAiState input = TroopAiState.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
+        // 更新单元坐标
+        var ab = ActorManager.GetActor(input.ActorId);
+        if (ab != null)
+        {
+            ab.CellIndex = input.CellIndexFrom;
+            ab.PosX = input.PosXFrom;
+            ab.PosZ = input.PosZFrom;
+        }
+        
         TroopAiStateReply output = new TroopAiStateReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             ActorId = input.ActorId,
             State = input.State,
-            PosFromX = input.PosFromX,
-            PosFromZ = input.PosFromZ,
-            PosToX = input.PosToX,
-            PosToZ = input.PosToZ,
+            PosXFrom = input.PosXFrom,
+            PosZFrom = input.PosZFrom,
+            PosXTo = input.PosXTo,
+            PosZTo = input.PosZTo,
+            CellIndexFrom = input.CellIndexFrom,
+            CellIndexTo = input.CellIndexTo,
             Speed = input.Speed,
             Ret = true,
-        };        
+        };
+        
         BroadcastMsg(ROOM_REPLY.TroopAiStateReply, output.ToByteArray());
     }
 

@@ -333,6 +333,15 @@ public class RoomMsgReply
                 Orientation = ab.Orientation,
                 Species = ab.Species,
                 ActorInfoId = ab.ActorInfoId,
+                
+                Name = ab.Name,
+                Hp = ab.Hp,
+                AttackPower = ab.AttackPower,
+                DefencePower = ab.DefencePower,
+                Speed = ab.Speed,
+                FieldOfVision = ab.FieldOfVision,
+                ShootingRange = ab.ShootingRange,
+                
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class UrbanCity
@@ -28,5 +29,31 @@ public class UrbanCity
         CityName = cityName;
         CitySize = citySize;
         IsCapital = isCapital;
+    }
+
+    public void SaveBuffer(BinaryWriter bw)
+    {
+        bw.Write(RoomId);
+        bw.Write(OwnerId);
+        bw.Write(CityId);
+        bw.Write(PosX);
+        bw.Write(PosZ);
+        bw.Write(CellIndex);
+        bw.Write(CityName);
+        bw.Write((byte)CitySize);
+        bw.Write(IsCapital);
+    }
+
+    public void LoadBuffer(BinaryReader br)
+    {
+        RoomId = br.ReadInt64();
+        OwnerId = br.ReadInt64();
+        CityId = br.ReadInt64();
+        PosX = br.ReadInt32();
+        PosZ = br.ReadInt32();
+        CellIndex = br.ReadInt32();
+        CityName = br.ReadString();
+        CitySize = br.ReadByte();
+        IsCapital = br.ReadBoolean();
     }
 }

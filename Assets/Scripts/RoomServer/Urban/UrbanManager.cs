@@ -7,8 +7,6 @@ using UnityEngine;
 
 public class UrbanManager
 {
-    public HexmapHelper _HexmapHelper;
-
     public Dictionary<long, UrbanCity> Cities = new Dictionary<long, UrbanCity>();
 
     public void AddCity(UrbanCity city)
@@ -59,15 +57,7 @@ public class UrbanManager
         foreach (var keyValue in Cities)
         {
             bw.Write(index++);
-            bw.Write(keyValue.Value.RoomId);
-            bw.Write(keyValue.Value.OwnerId);
-            bw.Write(keyValue.Value.CityId);
-            bw.Write(keyValue.Value.PosX);
-            bw.Write(keyValue.Value.PosZ);
-            bw.Write(keyValue.Value.CellIndex);
-            bw.Write(keyValue.Value.CityName);
-            bw.Write((byte)keyValue.Value.CitySize);
-            bw.Write(keyValue.Value.IsCapital);
+            keyValue.Value.SaveBuffer(bw);
         }
 
         return ms.GetBuffer();
@@ -95,18 +85,8 @@ public class UrbanManager
                 return false;
             }
 
-            UrbanCity city = new UrbanCity()
-            {
-                RoomId = br.ReadInt64(),
-                OwnerId = br.ReadInt64(),
-                CityId = br.ReadInt64(),
-                PosX = br.ReadInt32(),
-                PosZ = br.ReadInt32(),
-                CellIndex= br.ReadInt32(),
-                CityName =  br.ReadString(),
-                CitySize = br.ReadByte(),
-                IsCapital = br.ReadBoolean(),
-            };
+            UrbanCity city = new UrbanCity();
+            city.LoadBuffer(br);
             AddCity(city);
         }
         ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer - 城市个数：{Cities.Count}");

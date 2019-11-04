@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Sockets;
 using GameUtils;
 using JetBrains.Annotations;
@@ -28,6 +29,14 @@ namespace AI
         public float Orientation;
         public string Species = "N/A";
         public int ActorInfoId;
+        
+        public string Name;
+        public int Hp;
+        public float AttackPower;
+        public float DefencePower;
+        public float Speed;
+        public float FieldOfVision;
+        public float ShootingRange;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -51,7 +60,9 @@ namespace AI
             StateMachine = new StateMachineActor(this);
         }
 
-        public void Init(long roomId, long ownerId, long actorId, int posX, int posZ, int cellIndex, float orientation, string species, int actorInfoId)
+        public void Init(long roomId, long ownerId, long actorId, int posX, int posZ, int cellIndex, float orientation, 
+            string species, int actorInfoId,
+            string name, int hp, float attackPower, float defencePower, float speed, float fieldOfVision, float shootingRange)
         {
             RoomId = roomId;
             OwnerId = ownerId;
@@ -62,6 +73,14 @@ namespace AI
             Orientation = orientation;
             Species = species;
             ActorInfoId = actorInfoId;
+
+            Name = name;
+            Hp = hp;
+            AttackPower = attackPower;
+            DefencePower = defencePower;
+            Speed = speed;
+            FieldOfVision = fieldOfVision;
+            ShootingRange = shootingRange;
         }
         public void Fini()
         {
@@ -91,6 +110,78 @@ namespace AI
         {
             if(_logChanges)
                 Debug.Log(msg);
+        }
+        
+        #endregion;
+        
+        #region 存盘
+
+        public void LoadFromTable(out string name, out int hp, out float attackPower, out float defencePower,
+            out float speed, out float fieldOfVision, out float shootingRange)
+        {
+            var csv = CsvDataManager.Instance.GetTable("actor_info");
+            if (csv == null)
+            {
+                Debug.LogError($"ActorBehaviour LoadFromTable Error - table not found:actor_info");
+                name = "";
+                hp = 0;
+                attackPower = 0;
+                defencePower = 0;
+                speed = 0;
+                fieldOfVision = 0;
+                shootingRange = 0;
+                return;
+            }
+
+            name = csv.GetValue(ActorInfoId, "Name");
+            hp = csv.GetValueInt(ActorInfoId, "Hp");
+            attackPower = csv.GetValueFloat(ActorInfoId, "AttackPower");
+            defencePower = csv.GetValueFloat(ActorInfoId, "DefencePower");
+            speed = csv.GetValueFloat(ActorInfoId, "Speed");
+            fieldOfVision = csv.GetValueFloat(ActorInfoId, "FieldOfVision");
+            shootingRange = csv.GetValueFloat(ActorInfoId, "ShootingRange");
+        }
+    
+        public void SaveBuffer(BinaryWriter bw)
+        {
+            bw.Write(RoomId);    
+            bw.Write(OwnerId);
+            bw.Write(ActorId);
+            bw.Write(PosX);
+            bw.Write(PosZ);
+            bw.Write(CellIndex);
+            bw.Write(Orientation);
+            bw.Write(Species);
+            bw.Write(ActorInfoId);
+
+            bw.Write(Name);
+            bw.Write(Hp);
+            bw.Write(AttackPower);
+            bw.Write(DefencePower);
+            bw.Write(Speed);
+            bw.Write(FieldOfVision);
+            bw.Write(ShootingRange);
+        }
+
+        public void LoadBuffer(BinaryReader br)
+        {
+            RoomId = br.ReadInt64();
+            OwnerId = br.ReadInt64();
+            ActorId = br.ReadInt64();
+            PosX = br.ReadInt32();
+            PosZ = br.ReadInt32();
+            CellIndex = br.ReadInt32();
+            Orientation = br.ReadSingle();
+            Species = br.ReadString();
+            ActorInfoId = br.ReadInt32();
+
+            Name = br.ReadString();
+            Hp = br.ReadInt32();
+            AttackPower = br.ReadSingle();
+            DefencePower = br.ReadSingle();
+            Speed = br.ReadSingle();
+            FieldOfVision = br.ReadSingle();
+            ShootingRange = br.ReadSingle();
         }
         
         #endregion
