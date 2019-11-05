@@ -62,6 +62,7 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.AskForCities, OnAskForCities);
         MsgDispatcher.RegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.RegisterMsg((int)ROOM.CityRemove, OnCityRemove);
+        MsgDispatcher.RegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
     }
 
     public void RemoveListener()
@@ -73,6 +74,7 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.AskForCities, OnAskForCities);
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityRemove, OnCityRemove);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
     }
     
     #endregion
@@ -422,20 +424,22 @@ public class RoomLogic
         CityAdd input = CityAdd.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        bool isCapital = UrbanManager.GetMyCityCount(input.OwnerId) == 0; // 第一座城市是都城
-        CityAddReply output = new CityAddReply()
+        
+        // 删除建造城市的开拓者
         {
-            RoomId = input.RoomId,
-            OwnerId = input.OwnerId,
-            CityId = input.CityId,
-            PosX = input.PosX,
-            PosZ = input.PosZ,
-            CellIndex = input.CellIndex,
-            CityName = input.CityName,
-            CitySize = input.CitySize,
-            IsCapital = isCapital,
-            Ret = true,
-        };
+            bool ret = ActorManager.RemoveActor(input.CreatorId);
+
+            DestroyATroopReply output = new DestroyATroopReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.CreatorId,
+                Ret = ret,
+            };
+            BroadcastMsg(ROOM_REPLY.DestroyAtroopReply, output.ToByteArray());
+        }
+
+        bool isCapital = UrbanManager.GetMyCityCount(input.OwnerId) == 0; // 第一座城市是都城
         UrbanCity city = new UrbanCity()
         {
             RoomId = input.RoomId,
@@ -449,7 +453,23 @@ public class RoomLogic
             IsCapital = isCapital,
         };
         UrbanManager.AddCity(city);
-        BroadcastMsg(ROOM_REPLY.CityAddReply, output.ToByteArray());
+        
+        {
+            CityAddReply output = new CityAddReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                CityId = input.CityId,
+                PosX = input.PosX,
+                PosZ = input.PosZ,
+                CellIndex = input.CellIndex,
+                CityName = input.CityName,
+                CitySize = input.CitySize,
+                IsCapital = isCapital,
+                Ret = true,
+            };
+            BroadcastMsg(ROOM_REPLY.CityAddReply, output.ToByteArray());
+        }
     }
 
     private void OnCityRemove(SocketAsyncEventArgs args, byte[] bytes)
@@ -467,6 +487,22 @@ public class RoomLogic
         };
         BroadcastMsg(ROOM_REPLY.CityRemoveReply, output.ToByteArray());
     }
+
+    private void OnUpdatePos(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        UpdatePos input = UpdatePos.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        var ab = ActorManager.GetActor(input.ActorId);
+        if (ab != null)
+        {
+            ab.PosX = input.PosX;
+            ab.PosZ = input.PosZ;
+            ab.CellIndex = input.CellIndex;
+            ab.Orientation = input.Orientation;
+        }
         
+        // 这个消息不用返回了
+    }
     #endregion
 }
