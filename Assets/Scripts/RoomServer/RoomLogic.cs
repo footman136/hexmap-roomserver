@@ -24,6 +24,7 @@ public class RoomLogic
 
     public ActorManager ActorManager = new ActorManager();
     public UrbanManager UrbanManager = new UrbanManager();
+    public ResManager ResManager = new ResManager();
     
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
@@ -38,7 +39,7 @@ public class RoomLogic
 
     #region 初始化
     
-    public void Init(RoomInfo roomInfo)
+    public void Init(NetRoomInfo roomInfo)
     {
         _roomName = roomInfo.RoomName;
         _roomId = roomInfo.RoomId;
@@ -63,6 +64,8 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.RegisterMsg((int)ROOM.CityRemove, OnCityRemove);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
+        MsgDispatcher.RegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
+        MsgDispatcher.RegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
     }
 
     public void RemoveListener()
@@ -75,6 +78,8 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityRemove, OnCityRemove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
     }
     
     #endregion
@@ -89,84 +94,47 @@ public class RoomLogic
         // 2，因为很难做成数据/渲染分开的模式（如果要修改也需要较长的时间），这会导致服务器和客户端要同时维护两套代码
         // ——所以，这个工作，我建议放在后面进行，比如确定使用java或者go语言来制作服务器的时候，专门给地图制作数据
         // _hexmapHelper.Load(mapdata);
+        
+        LoadRes();
         return true;
     }
 
-    public void SavePlayer(SocketAsyncEventArgs args)
+    public void SaveRes()
     {
-        PlayerInfo pi = GetPlayer(args);
-        if (pi == null)
+        // 保存该地图上的资源数据
+        byte[] resBytes = ResManager.SaveBuffer();
+        if (resBytes.Length > 1024 * 32)
         {
-            ServerRoomManager.Instance.Log("RoomLogic SavePlayer Error - player not found!");
-            return;
-        }
-
-        long ownerId = pi.Enter.TokenId;
-        
-        // 保存该玩家的城市数据
-        byte[] cityBytes = UrbanManager.SaveBuffer();
-        if (cityBytes.Length > 1024 * 8)
-        {
-            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
+            ServerRoomManager.Instance.Log($"RoomLogic Save resrouce Error - save resrouce buffer is too large:{resBytes.Length} bytes");
         }
 
         string tableName = $"MAP:{RoomId}";
-        string keyName = $"Cities";
-        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
-        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
+        string keyName = $"Resources";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, resBytes );
+
+        // 保存基本信息,仅供查看
+        keyName = $"Infos";
+        string info = $"Res Count:{ResManager.AllRes.Count}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info );
         
-        // 保存该玩家的单元数据
-        byte[] actorBytes = ActorManager.SaveBuffer();
-        if (actorBytes.Length > 1024 * 32)
-        {
-            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{actorBytes.Length} bytes");
-        }
-        tableName = $"MAP:{RoomId}";
-        keyName = $"Actors";
-        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, actorBytes );
-        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{ActorManager.AllActors.Count}");
+        ServerRoomManager.Instance.Log($"RoomLogic Save resource OK - Res Count:{ResManager.AllRes.Count}");
     }
 
-    public void LoadPlayer(SocketAsyncEventArgs args)
+    public void LoadRes()
     {
-        PlayerInfo pi = GetPlayer(args);
-        if (pi == null)
-        {
-            ServerRoomManager.Instance.Log("LoadPlayer Error - player not found!");
-            return;
-        }
-
-        long ownerId = pi.Enter.TokenId;
-        
-        // 读取该玩家的城市数据
+        // 读取地图上的资源数据
         string tableName = $"MAP:{RoomId}";
-        string keyName = $"Cities";
-        byte[] cityBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
-        if (cityBytes != null)
+        string keyName = $"Resources";
+        byte[] resBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        if (resBytes != null)
         {
-            if (!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length))
+            if (!ResManager.LoadBuffer(resBytes, resBytes.Length))
             {
-                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - City LoadBuffer Failed!");
+                ServerRoomManager.Instance.Log("RoomLogic Load Error - Resource LoadBuffer Failed!");
             }
             else
             {
-                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
-            }
-        }
-        
-        // 读取该玩家的单元数据
-        tableName = $"MAP:{RoomId}";
-        keyName = $"Actors";
-        byte[] actorBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
-        if (actorBytes != null)
-        {
-            if (!ActorManager.LoadBuffer(actorBytes, actorBytes.Length))
-            {
-                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - Actor LoadBuffer Failed!");
-            }
-            else
-            {
-                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 单元个数：{ActorManager.AllActors.Count}");
+                ServerRoomManager.Instance.Log($"RoomLogic Load OK - 资源个数：{ResManager.AllRes.Count}");
             }
         }
     }
@@ -212,6 +180,93 @@ public class RoomLogic
         }
 
         return null;
+    }
+    
+    public void SavePlayer(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = GetPlayer(args);
+        if (pi == null)
+        {
+            ServerRoomManager.Instance.Log("RoomLogic SavePlayer Error - player not found!");
+            return;
+        }
+
+        long ownerId = pi.Enter.TokenId;
+        
+        // 保存该玩家的城市数据
+        byte[] cityBytes = UrbanManager.SaveBuffer();
+        if (cityBytes.Length > 1024 * 8)
+        {
+            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{cityBytes.Length} bytes");
+        }
+
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"Cities-{pi.Enter.TokenId}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, cityBytes );
+        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{UrbanManager.Cities.Count}");
+        
+        // 保存该玩家的单元数据
+        byte[] actorBytes = ActorManager.SaveBuffer();
+        if (actorBytes.Length > 1024 * 32)
+        {
+            ServerRoomManager.Instance.Log($"RoomLogic SavePlayer Error - save buffer is too large:{actorBytes.Length} bytes");
+        }
+        tableName = $"MAP:{RoomId}";
+        keyName = $"Actors-{pi.Enter.TokenId}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, actorBytes );
+
+        // 保存基础信息,仅供查看
+        tableName = $"MAP:{RoomId}";
+        keyName = $"Infos-{pi.Enter.TokenId}";
+        string info = $"City Count:{UrbanManager.Cities.Count} | Actor Count:{ActorManager.AllActors.Count}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
+        
+        
+        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account} - City Count:{ActorManager.AllActors.Count}");
+    }
+
+    public void LoadPlayer(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = GetPlayer(args);
+        if (pi == null)
+        {
+            ServerRoomManager.Instance.Log("LoadPlayer Error - player not found!");
+            return;
+        }
+
+        long ownerId = pi.Enter.TokenId;
+        
+        // 读取该玩家的城市数据
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"Cities-{pi.Enter.TokenId}";
+        byte[] cityBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        if (cityBytes != null)
+        {
+            if (!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length))
+            {
+                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - City LoadBuffer Failed!");
+            }
+            else
+            {
+                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 城市个数：{UrbanManager.Cities.Count}");
+            }
+        }
+        
+        // 读取该玩家的单元数据
+        tableName = $"MAP:{RoomId}";
+        keyName = $"Actors-{pi.Enter.TokenId}";
+        byte[] actorBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        if (actorBytes != null)
+        {
+            if (!ActorManager.LoadBuffer(actorBytes, actorBytes.Length))
+            {
+                ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - Actor LoadBuffer Failed!");
+            }
+            else
+            {
+                ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer OK - 单元个数：{ActorManager.AllActors.Count}");
+            }
+        }
     }
     
     #endregion
@@ -504,5 +559,52 @@ public class RoomLogic
         
         // 这个消息不用返回了
     }
+
+    private void OnHarvestStart(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        HarvestStart input = HarvestStart.Parser.ParseFrom(bytes);
+        HarvestStartReply output = new HarvestStartReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            CellIndex = input.CellIndex,
+            ResType = input.ResType,
+            ResRemain = input.ResRemain,
+            DurationTime = input.DurationTime,
+            Ret = true,
+        };
+        BroadcastMsg(ROOM_REPLY.HarvestStartReply, output.ToByteArray());
+    }
+    private void OnHarvestStop(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        HarvestStop input = HarvestStop.Parser.ParseFrom(bytes);
+
+        var hr = ResManager.GetRes(input.CellIndex);
+        if (hr == null)
+        {
+            hr = new ResInfo();
+            ResManager.AddRes(input.CellIndex, hr);
+        }
+
+        hr.SetAmount((ResInfo.RESOURCE_TYPE)input.ResType, input.ResRemain);
+        
+        HarvestStopReply output = new HarvestStopReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            CellIndex = input.CellIndex,
+            ResType = input.ResType,
+            ResRemain = input.ResRemain,
+            ResHarvest = input.ResHarvest,
+            Ret = true,
+        };
+        BroadcastMsg(ROOM_REPLY.HarvestStopReply, output.ToByteArray());
+        
+        // 存盘,效率有点低,但是先这样了
+        SaveRes();
+    }
+    
     #endregion
 }

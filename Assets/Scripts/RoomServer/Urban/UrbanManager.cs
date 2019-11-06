@@ -56,7 +56,7 @@ public class UrbanManager
         int index = 0;
         foreach (var keyValue in Cities)
         {
-            bw.Write(index++);
+            bw.Write(index++); // 这里保存一个序号,纯粹是为了校验
             keyValue.Value.SaveBuffer(bw);
         }
 
@@ -89,7 +89,7 @@ public class UrbanManager
             city.LoadBuffer(br);
             AddCity(city);
         }
-        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer - 城市个数：{Cities.Count}");
+        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer OK - 城市个数：{Cities.Count}");
 
         return true;
     }

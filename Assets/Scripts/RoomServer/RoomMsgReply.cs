@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using LitJson;
 using UnityEngine;
 using System.Net.Sockets;
@@ -13,7 +14,7 @@ using UnityEngine.Experimental.PlayerLoop;
 using Object = UnityEngine.Object;
 using PlayerEnter = Protobuf.Room.PlayerEnter;
 using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
-using RoomInfo = Protobuf.Room.RoomInfo;
+using RoomInfo = Protobuf.Room.NetRoomInfo;
 using GameUtils;
 using Actor;
 using AI;
@@ -64,10 +65,13 @@ public class RoomMsgReply
                     DOWNLOAD_MAP(recvData);
                     break;
                 case ROOM.EnterRoom:
-                    ENTER_ROOM(_args, recvData);
+                    ENTER_ROOM(recvData);
                     break;
                 case ROOM.LeaveRoom:
-                    LEAVE_ROOM(_args, recvData);
+                    LEAVE_ROOM(recvData);
+                    break;
+                case ROOM.DownloadRes:
+                    DOWNLOAD_RES(recvData);
                     break;
                 default:
                     // 通用消息处理器，别的地方要想响应找个消息，应该调用MsgDispatcher.RegisterMsg()来注册消息处理事件
@@ -350,7 +354,7 @@ public class RoomMsgReply
         ServerRoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
     }
     
-    private static void ENTER_ROOM(SocketAsyncEventArgs args, byte[] bytes)
+    private static void ENTER_ROOM(byte[] bytes)
     {
         bool ret = false;
         string errMsg = "";
@@ -365,7 +369,7 @@ public class RoomMsgReply
                 if(ServerRoomManager.Instance.Redis.CSRedis.Exists(tableName))
                 {
                     long createrId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "Creator");
-                    RoomInfo roomInfo = new RoomInfo()
+                    NetRoomInfo roomInfo = new NetRoomInfo()
                     {
                         RoomId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId"),
                         MaxPlayerCount =
@@ -386,13 +390,13 @@ public class RoomMsgReply
 
         if (roomLogic != null)
         {
-            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(args);
+            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
             if (pi != null)
             {
                 ret = true;
-                roomLogic.AddPlayer(args, pi.Enter.TokenId, pi.Enter.Account);
+                roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
-                ServerRoomManager.Instance.SetPlayerInfo(args, pi);
+                ServerRoomManager.Instance.SetPlayerInfo(_args, pi);
             
                 // 通知大厅
                 UpdateRoomInfo output2 = new UpdateRoomInfo()
@@ -413,7 +417,7 @@ public class RoomMsgReply
                     RoomId = roomLogic.RoomId,
                     RoomName = roomLogic.RoomName,
                 };
-                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+                ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
                 ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM - 玩家进入房间！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
                 return;
             }
@@ -432,12 +436,12 @@ public class RoomMsgReply
                 Ret = false,
                 ErrMsg = errMsg,
             };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
             ServerRoomManager.Instance.Log("MSG: ENTER_ROOM - "+errMsg);
         }
     }
 
-    private static void LEAVE_ROOM(SocketAsyncEventArgs args, byte[] bytes)
+    private static void LEAVE_ROOM(byte[] bytes)
     {
         LeaveRoom input = LeaveRoom.Parser.ParseFrom(bytes);
 
@@ -445,10 +449,9 @@ public class RoomMsgReply
         RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic != null)
         {
-            UIManager.Instance.EndLoading();
-            string account = roomLogic.GetPlayer(args)?.Enter.Account;
+            string account = roomLogic.GetPlayer(_args)?.Enter.Account;
             ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM - 玩家离开房间！Account:{account} - Room:{roomLogic.RoomName}");
-            ServerRoomManager.Instance.RemovePlayer(args, input.ReleaseIfNoUser);
+            ServerRoomManager.Instance.RemovePlayer(_args, input.ReleaseIfNoUser);
             ret = true;
         }
         else
@@ -460,7 +463,82 @@ public class RoomMsgReply
         {
             Ret = ret,
         };
-        ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
+        ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
+    }
+
+    private static void DOWNLOAD_RES(byte[] bytes)
+    {
+        DownloadRes input = DownloadRes.Parser.ParseFrom(bytes);
+        RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
+        string msg = null;
+        if (roomLogic != null)
+        {
+            const int PACKAGE_SIZE = 24;
+            int packageCount = Mathf.CeilToInt(roomLogic.ResManager.AllRes.Count * ResInfo.GetSaveSize() / (float)PACKAGE_SIZE);
+            int infoCountForEachPakcage = PACKAGE_SIZE / ResInfo.GetSaveSize();
+            int packageIndex = 0;
+            NetResInfo [] netResInfos = new NetResInfo[infoCountForEachPakcage];
+            int index = 0;
+            foreach(var keyValue in roomLogic.ResManager.AllRes)
+            {
+                var info = new NetResInfo()
+                {
+                    CellIndex = keyValue.Key,
+                    ResType = (int)keyValue.Value.ResType,
+                    ResAmount = keyValue.Value.GetAmount(keyValue.Value.ResType),
+                };
+                netResInfos[index++] = info;
+                if (index == infoCountForEachPakcage)
+                { // 凑够一批就发送
+                    DownloadResReply output = new DownloadResReply()
+                    {
+                        RoomId = input.RoomId,
+                        Ret = true,
+                        PackageCount = packageCount,
+                        PackageIndex = packageIndex,
+                        InfoCount = index,
+                        ResInfo = {netResInfos},
+                    };
+                    ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
+                    ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES - Package:{packageIndex}/{packageCount} - InfoCount:{index}");
+                    packageIndex++;
+                    index = 0;
+                }
+            }
+
+            if(index > 0)
+            { // 最后一段
+                NetResInfo [] netResInfosLast = new NetResInfo[index];
+                Array.Copy(netResInfos, 0, netResInfosLast, 0, index); 
+                DownloadResReply output = new DownloadResReply()
+                {
+                    RoomId = input.RoomId,
+                    Ret = true,
+                    PackageCount = packageCount,
+                    PackageIndex = packageIndex,
+                    InfoCount = index,
+                    ResInfo = {netResInfosLast},
+                };
+                ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
+                ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES OK - Package:{packageIndex}/{packageCount} - InfoCount:{index} - TotalCount:{roomLogic.ResManager.AllRes.Count}");
+            }
+            return;
+        }
+        else
+        {
+            msg = $"room not found! RoomId:{input.RoomId}";
+            ServerRoomManager.Instance.Log("MSG: DOWNLOAD_RES - " + msg);
+        }
+
+        {
+            DownloadResReply output = new DownloadResReply()
+            {
+                RoomId = input.RoomId,
+                Ret = false,
+                ErrMsg = msg,
+            };
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
+        }
     }
     #endregion
 }

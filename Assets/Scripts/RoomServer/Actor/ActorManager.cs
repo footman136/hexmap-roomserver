@@ -92,7 +92,7 @@ namespace AI
                 ab.LoadBuffer(br);
                 AddActor(ab);
             }
-            ServerRoomManager.Instance.Log($"ActorManager LoadBuffer - 单元个数：{AllActors.Count}");
+            ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");
     
             return true;
         }

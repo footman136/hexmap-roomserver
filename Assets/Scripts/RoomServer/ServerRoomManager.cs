@@ -252,21 +252,16 @@ public class ServerRoomManager : MonoBehaviour
         RoomLogic roomLogic = Rooms[pi.RoomId];
         roomLogic.SavePlayer(args);
         if (roomLogic.CurPlayerCount == 0 && bCloseRoomIfNoUser)
-        {
-            if (bCloseRoomIfNoUser)
+        { // 存盘并关闭房间
+            roomLogic.Fini(); // 结束化
+            Rooms.Remove(pi.RoomId);
+            // 通知大厅：删除房间
+            Protobuf.Lobby.UpdateRoomInfo output2 = new Protobuf.Lobby.UpdateRoomInfo()
             {
-                roomLogic.Fini(); // 结束化
-                Rooms.Remove(pi.RoomId);
-                // 通知大厅：删除房间
-                Protobuf.Lobby.UpdateRoomInfo output2 = new Protobuf.Lobby.UpdateRoomInfo()
-                {
-                    RoomId = roomLogic.RoomId,
-                    IsRemove = true,
-                };
-                MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
-            }
-            else
-            {
+                RoomId = roomLogic.RoomId,
+                IsRemove = true,
+            };
+            MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
                 // 存盘这个事情先放一放，因为：
                 // 1，服务器目前还没有全部的地图数据
                 // 2，里面的Actor我想单独写地方来保存，而不是用它原有的结构。因为未来游戏主要会在这里进行拓展
@@ -283,7 +278,6 @@ public class ServerRoomManager : MonoBehaviour
 //                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
 //                        
 //                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
-            }
         }
         RemovePlayerFromRoom(args);
         Players.Remove(args);
