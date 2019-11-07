@@ -8,8 +8,6 @@ using Protobuf.Room;
 using UnityEngine;
 using Actor;
 using AI;
-using Google.Protobuf.Reflection;
-using UnityEditorInternal;
 
 public class RoomLogic
 {
@@ -35,8 +33,6 @@ public class RoomLogic
     public int MaxPlayerCount => _maxPlayerCount;
     public int CurPlayerCount => Players.Count;
     public long Creator => _creator;
-    
-    
 
     #region 初始化
     
@@ -63,11 +59,9 @@ public class RoomLogic
 
     public void AddListener()
     {
-        MsgDispatcher.RegisterMsg((int)ROOM.DownloadCities, OnDownloadCities);
         MsgDispatcher.RegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.RegisterMsg((int)ROOM.CityRemove, OnCityRemove);
         
-        MsgDispatcher.RegisterMsg((int)ROOM.DownloadActors, OnDownloadActors);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorAdd, OnActorAdd);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
@@ -76,16 +70,13 @@ public class RoomLogic
         
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
-        MsgDispatcher.RegisterMsg((int)ROOM.DownloadRes, OnDownloadRes);
     }
 
     public void RemoveListener()
     {
-        MsgDispatcher.UnRegisterMsg((int)ROOM.DownloadCities, OnDownloadCities);
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityAdd, OnCityAdd);
         MsgDispatcher.UnRegisterMsg((int)ROOM.CityRemove, OnCityRemove);
         
-        MsgDispatcher.UnRegisterMsg((int)ROOM.DownloadActors, OnDownloadActors);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorAdd, OnActorAdd);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
@@ -94,7 +85,6 @@ public class RoomLogic
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
-        MsgDispatcher.UnRegisterMsg((int)ROOM.DownloadRes, OnDownloadRes);
     }
     
     #endregion
@@ -304,60 +294,6 @@ public class RoomLogic
     
     #region 消息处理 - 城市
     
-    private void OnDownloadCities(SocketAsyncEventArgs args, byte [] bytes)
-    {
-        DownloadCities input = DownloadCities.Parser.ParseFrom(bytes);
-        if (input.RoomId != RoomId)
-            return; // 不是自己房间的消息，略过
-        PlayerInfo pi = GetPlayer(args);
-        if (pi == null)
-        {
-            DownloadCitiesReply output = new DownloadCitiesReply()
-            {
-                RoomId = input.RoomId,
-                Ret = false,
-            };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadCitiesReply, output.ToByteArray());
-            return;
-        }
-
-        long OwnerId = pi.Enter.TokenId;
-
-        long capitalCityId = 0;
-        foreach (var keyValue in UrbanManager.AllCities)
-        {
-            UrbanCity city = keyValue.Value;
-            if (city.IsCapital && city.OwnerId == OwnerId)
-                capitalCityId = city.CityId;
-            CityAddReply output = new CityAddReply()
-            {
-                RoomId = city.RoomId,
-                OwnerId = city.OwnerId,
-                CityId = city.CityId,
-                PosX = city.PosX,
-                PosZ = city.PosZ,
-                CellIndex = city.CellIndex,
-                CityName = city.CityName,
-                CitySize = city.CitySize,
-                IsCapital = city.IsCapital,
-                Ret = true,
-            }; 
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.CityAddReply, output.ToByteArray());
-        }
-
-        {
-            DownloadCitiesReply output = new DownloadCitiesReply()
-            {
-                RoomId = input.RoomId,
-                TotalCount = UrbanManager.AllCities.Count,
-                MyCount = UrbanManager.CountOfThePlayer(OwnerId),
-                CapitalCityId = capitalCityId,
-                Ret = true,
-            };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadCitiesReply, output.ToByteArray());
-        }
-    }
-
     private void OnCityAdd(SocketAsyncEventArgs args, byte[] bytes)
     {
         CityAdd input = CityAdd.Parser.ParseFrom(bytes);
@@ -431,69 +367,6 @@ public class RoomLogic
     
     #region 消息处理 - 单元
 
-    private void OnDownloadActors(SocketAsyncEventArgs args, byte[] bytes)
-    {
-        DownloadActors input = DownloadActors.Parser.ParseFrom(bytes);
-        if (input.RoomId != RoomId)
-            return; // 不是自己房间的消息，略过
-        
-        // 把房间内已有的所有actor都发给本人
-        foreach (var keyValue in ActorManager.AllActors)
-        {
-            ActorBehaviour ab = keyValue.Value;
-            ActorAddReply output = new ActorAddReply()
-            {
-                RoomId = ab.RoomId,
-                OwnerId = ab.OwnerId,
-                ActorId = ab.ActorId,
-                PosX = ab.PosX,
-                PosZ = ab.PosZ,
-                Orientation = ab.Orientation,
-                Species = ab.Species,
-                ActorInfoId = ab.ActorInfoId,
-                
-                Name = ab.Name,
-                Hp = ab.Hp,
-                AttackPower = ab.AttackPower,
-                DefencePower = ab.DefencePower,
-                Speed = ab.Speed,
-                FieldOfVision = ab.FieldOfVision,
-                ShootingRange = ab.ShootingRange,
-                
-                Ret = true,
-            };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
-        }
-
-        {
-            PlayerInfo pi = GetPlayer(args);
-            if (pi == null)
-            {
-                DownloadCitiesReply output = new DownloadCitiesReply()
-                {
-                    RoomId = input.RoomId,
-                    Ret = false,
-                    ErrMsg = "本玩家在服务器没有找到!"
-                };
-                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadActorsReply, output.ToByteArray());
-                return;
-            }
-            
-            long OwnerId = pi.Enter.TokenId;
-
-            {
-                DownloadActorsReply output = new DownloadActorsReply()
-                {
-                    RoomId = input.RoomId,
-                    TotalCount = UrbanManager.AllCities.Count,
-                    MyCount = UrbanManager.CountOfThePlayer(OwnerId),
-                    Ret = true,
-                };
-                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadActorsReply, output.ToByteArray());
-            }
-        }
-    }
-    
     private void OnActorAdd(SocketAsyncEventArgs args, byte[] bytes)
     {
         ActorAdd input = ActorAdd.Parser.ParseFrom(bytes);
@@ -509,7 +382,7 @@ public class RoomLogic
                 Ret = false,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
-            ServerRoomManager.Instance.Log($"MSG: ActorAdd - 当前玩家不在本房间！房间名:{RoomName} - 玩家个数:{Players.Count}");
+            ServerRoomManager.Instance.Log($"MSG: ActorAdd - 当前玩家不在本本战场！战场名:{RoomName} - 玩家个数:{Players.Count}");
         }
         else
         {
@@ -691,81 +564,6 @@ public class RoomLogic
         
         // 存盘,效率有点低,但是先这样了
         SaveRes();
-    }
-    
-    private static void OnDownloadRes(SocketAsyncEventArgs args, byte[] bytes)
-    {
-        DownloadRes input = DownloadRes.Parser.ParseFrom(bytes);
-        RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
-        string msg = null;
-        if (roomLogic != null)
-        {
-            const int PACKAGE_SIZE = 24;
-            int packageCount = Mathf.CeilToInt(roomLogic.ResManager.AllRes.Count * ResInfo.GetSaveSize() / (float)PACKAGE_SIZE);
-            int infoCountForEachPakcage = PACKAGE_SIZE / ResInfo.GetSaveSize();
-            int packageIndex = 0;
-            NetResInfo [] netResInfos = new NetResInfo[infoCountForEachPakcage];
-            int index = 0;
-            foreach(var keyValue in roomLogic.ResManager.AllRes)
-            {
-                var info = new NetResInfo()
-                {
-                    CellIndex = keyValue.Key,
-                    ResType = (int)keyValue.Value.ResType,
-                    ResAmount = keyValue.Value.GetAmount(keyValue.Value.ResType),
-                };
-                netResInfos[index++] = info;
-                if (index == infoCountForEachPakcage)
-                { // 凑够一批就发送
-                    DownloadResReply output = new DownloadResReply()
-                    {
-                        RoomId = input.RoomId,
-                        Ret = true,
-                        PackageCount = packageCount,
-                        PackageIndex = packageIndex,
-                        InfoCount = index,
-                        ResInfo = {netResInfos},
-                    };
-                    ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-                    ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES - Package:{packageIndex}/{packageCount} - InfoCount:{index}");
-                    packageIndex++;
-                    index = 0;
-                }
-            }
-
-            if(index > 0)
-            { // 最后一段
-                NetResInfo [] netResInfosLast = new NetResInfo[index];
-                Array.Copy(netResInfos, 0, netResInfosLast, 0, index); 
-                DownloadResReply output = new DownloadResReply()
-                {
-                    RoomId = input.RoomId,
-                    Ret = true,
-                    PackageCount = packageCount,
-                    PackageIndex = packageIndex,
-                    InfoCount = index,
-                    ResInfo = {netResInfosLast},
-                };
-                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-                ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES OK - Package:{packageIndex}/{packageCount} - InfoCount:{index} - TotalCount:{roomLogic.ResManager.AllRes.Count}");
-            }
-            return;
-        }
-        else
-        {
-            msg = $"room not found! RoomId:{input.RoomId}";
-            ServerRoomManager.Instance.Log("MSG: DOWNLOAD_RES - " + msg);
-        }
-
-        {
-            DownloadResReply output = new DownloadResReply()
-            {
-                RoomId = input.RoomId,
-                Ret = false,
-                ErrMsg = msg,
-            };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-        }
     }
     
     #endregion
