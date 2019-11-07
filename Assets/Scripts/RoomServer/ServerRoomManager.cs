@@ -250,9 +250,12 @@ public class ServerRoomManager : MonoBehaviour
             return;
         }
         RoomLogic roomLogic = Rooms[pi.RoomId];
-        roomLogic.SavePlayer(args);
+        // 存盘
+        roomLogic.SaveCommonInfo(args);
+        roomLogic.SaveActor();
+        roomLogic.SaveCity();
         if (roomLogic.CurPlayerCount == 0 && bCloseRoomIfNoUser)
-        { // 存盘并关闭房间
+        { // 关闭房间
             roomLogic.Fini(); // 结束化
             Rooms.Remove(pi.RoomId);
             // 通知大厅：删除房间

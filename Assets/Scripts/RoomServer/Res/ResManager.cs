@@ -10,18 +10,12 @@ public class ResManager
 
     public void AddRes(int cellIndex, ResInfo ri)
     {
-//        if (!AllRes.ContainsKey(cellIndex))
-//        {
-//            ri = new ResInfo();
-//        }
         AllRes[cellIndex] = ri;
     }
 
     public ResInfo GetRes(int cellIndex)
     {
-        if (!AllRes.ContainsKey(cellIndex))
-            return null;            
-        return AllRes[cellIndex];
+        return AllRes.ContainsKey(cellIndex) ? AllRes[cellIndex] : null;
     }
 
     public byte[] SaveBuffer()

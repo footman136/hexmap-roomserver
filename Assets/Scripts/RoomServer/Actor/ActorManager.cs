@@ -10,21 +10,20 @@ namespace AI
     /// </summary>
     public class ActorManager
     {
-        private Dictionary<long, ActorBehaviour> _allActors = new Dictionary<long, ActorBehaviour>();
-        public Dictionary<long, ActorBehaviour> AllActors => _allActors;
+        public Dictionary<long, ActorBehaviour> AllActors = new Dictionary<long, ActorBehaviour>();
 
         public void AddActor(ActorBehaviour ab)
         {
-            _allActors.Add(ab.ActorId, ab);
+            AllActors[ab.ActorId] = ab;
         }
 
         public bool RemoveActor(long actorId)
         {
-            if (_allActors.ContainsKey(actorId))
+            if (AllActors.ContainsKey(actorId))
             {
-                var actor = _allActors[actorId];
+                var actor = AllActors[actorId];
                 actor.Fini();
-                _allActors.Remove(actorId);
+                AllActors.Remove(actorId);
                 return true;
             }
 
@@ -33,17 +32,12 @@ namespace AI
 
         public ActorBehaviour GetActor(long actorId)
         {
-            if (_allActors.ContainsKey(actorId))
-            {
-                return _allActors[actorId];
-            }
-
-            return null;
+            return AllActors.ContainsKey(actorId) ? AllActors[actorId] : null;
         }
 
         public void Tick()
         {
-            foreach (var keyValue in _allActors)
+            foreach (var keyValue in AllActors)
             {
                 keyValue.Value.Tick();
             }
@@ -95,6 +89,20 @@ namespace AI
             ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");
     
             return true;
+        }
+
+        public int CountOfThePlayer(long ownerId)
+        {
+            int count = 0;
+            foreach (var keyValue in AllActors)
+            {
+                if (keyValue.Value.OwnerId == ownerId)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
     }
 }

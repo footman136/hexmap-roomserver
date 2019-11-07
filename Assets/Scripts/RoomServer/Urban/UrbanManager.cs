@@ -7,43 +7,28 @@ using UnityEngine;
 
 public class UrbanManager
 {
-    public Dictionary<long, UrbanCity> Cities = new Dictionary<long, UrbanCity>();
+    public Dictionary<long, UrbanCity> AllCities = new Dictionary<long, UrbanCity>();
 
     public void AddCity(UrbanCity city)
     {
-        if (Cities.ContainsKey(city.CityId))
-        {
-            ServerRoomManager.Instance.Log("MSG: Duplicated city!");
-        }
-        else
-        {
-            Cities.Add(city.CityId, city);
-        }
+        AllCities[city.CityId] = city;
+    }
+
+    public UrbanCity GetCity(long cityId)
+    {
+        return AllCities.ContainsKey(cityId) ? AllCities[cityId] : null;
     }
 
     public bool RemoveCity(long cityId)
     {
-        if (Cities.ContainsKey(cityId))
+        if (AllCities.ContainsKey(cityId))
         {
-            var city = Cities[cityId];
-            Cities.Remove(cityId);
+            var city = AllCities[cityId];
+            AllCities.Remove(cityId);
             return true;
         }
 
         return false;
-    }
-
-    public int GetMyCityCount(long ownerId)
-    {
-        int count = 0;
-        foreach (var keyValue in Cities)
-        {
-            var city = keyValue.Value;
-            if (city.OwnerId == ownerId)
-                count++;
-        }
-
-        return count;
     }
 
     public byte[] SaveBuffer()
@@ -52,9 +37,9 @@ public class UrbanManager
         BinaryWriter bw = new BinaryWriter(ms);
         int version = 1;
         bw.Write(version);
-        bw.Write(Cities.Count);
+        bw.Write(AllCities.Count);
         int index = 0;
-        foreach (var keyValue in Cities)
+        foreach (var keyValue in AllCities)
         {
             bw.Write(index++); // 这里保存一个序号,纯粹是为了校验
             keyValue.Value.SaveBuffer(bw);
@@ -75,7 +60,7 @@ public class UrbanManager
             return false;
         }
 
-        Cities.Clear();
+        AllCities.Clear();
         for (int i = 0; i < cityCount; ++i)
         {
             int index = br.ReadInt32();
@@ -89,8 +74,21 @@ public class UrbanManager
             city.LoadBuffer(br);
             AddCity(city);
         }
-        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer OK - 城市个数：{Cities.Count}");
+        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer OK - 城市个数：{AllCities.Count}");
 
         return true;
+    }
+    public int CountOfThePlayer(long ownerId)
+    {
+        int count = 0;
+        foreach (var keyValue in AllCities)
+        {
+            if (keyValue.Value.OwnerId == ownerId)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 }

@@ -70,9 +70,6 @@ public class RoomMsgReply
                 case ROOM.LeaveRoom:
                     LEAVE_ROOM(recvData);
                     break;
-                case ROOM.DownloadRes:
-                    DOWNLOAD_RES(recvData);
-                    break;
                 default:
                     // 通用消息处理器，别的地方要想响应找个消息，应该调用MsgDispatcher.RegisterMsg()来注册消息处理事件
                     MsgDispatcher.ProcessMsg(args, bytes, size);
@@ -275,9 +272,6 @@ public class RoomMsgReply
             return;
         }
 
-        // 把玩家私人的数据（比如：城市）从Redis里读出来
-        roomLogic.LoadPlayer(_args);
-        
         //////////////
         // 把地图数据下发到客户端
         const int CHUNK_SIZE = 900;
@@ -321,34 +315,6 @@ public class RoomMsgReply
             position += remainSize;
             remainSize -= remainSize;
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
-        }
-        
-        // 最后一件事：把房间内已有的所有actor都发给本人
-        foreach (var keyValue in roomLogic.ActorManager.AllActors)
-        {
-            ActorBehaviour ab = keyValue.Value;
-            CreateATroopReply output = new CreateATroopReply()
-            {
-                RoomId = ab.RoomId,
-                OwnerId = ab.OwnerId,
-                ActorId = ab.ActorId,
-                PosX = ab.PosX,
-                PosZ = ab.PosZ,
-                Orientation = ab.Orientation,
-                Species = ab.Species,
-                ActorInfoId = ab.ActorInfoId,
-                
-                Name = ab.Name,
-                Hp = ab.Hp,
-                AttackPower = ab.AttackPower,
-                DefencePower = ab.DefencePower,
-                Speed = ab.Speed,
-                FieldOfVision = ab.FieldOfVision,
-                ShootingRange = ab.ShootingRange,
-                
-                Ret = true,
-            };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.CreateAtroopReply, output.ToByteArray());
         }
         
         ServerRoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
@@ -466,79 +432,5 @@ public class RoomMsgReply
         ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
     }
 
-    private static void DOWNLOAD_RES(byte[] bytes)
-    {
-        DownloadRes input = DownloadRes.Parser.ParseFrom(bytes);
-        RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
-        string msg = null;
-        if (roomLogic != null)
-        {
-            const int PACKAGE_SIZE = 24;
-            int packageCount = Mathf.CeilToInt(roomLogic.ResManager.AllRes.Count * ResInfo.GetSaveSize() / (float)PACKAGE_SIZE);
-            int infoCountForEachPakcage = PACKAGE_SIZE / ResInfo.GetSaveSize();
-            int packageIndex = 0;
-            NetResInfo [] netResInfos = new NetResInfo[infoCountForEachPakcage];
-            int index = 0;
-            foreach(var keyValue in roomLogic.ResManager.AllRes)
-            {
-                var info = new NetResInfo()
-                {
-                    CellIndex = keyValue.Key,
-                    ResType = (int)keyValue.Value.ResType,
-                    ResAmount = keyValue.Value.GetAmount(keyValue.Value.ResType),
-                };
-                netResInfos[index++] = info;
-                if (index == infoCountForEachPakcage)
-                { // 凑够一批就发送
-                    DownloadResReply output = new DownloadResReply()
-                    {
-                        RoomId = input.RoomId,
-                        Ret = true,
-                        PackageCount = packageCount,
-                        PackageIndex = packageIndex,
-                        InfoCount = index,
-                        ResInfo = {netResInfos},
-                    };
-                    ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-                    ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES - Package:{packageIndex}/{packageCount} - InfoCount:{index}");
-                    packageIndex++;
-                    index = 0;
-                }
-            }
-
-            if(index > 0)
-            { // 最后一段
-                NetResInfo [] netResInfosLast = new NetResInfo[index];
-                Array.Copy(netResInfos, 0, netResInfosLast, 0, index); 
-                DownloadResReply output = new DownloadResReply()
-                {
-                    RoomId = input.RoomId,
-                    Ret = true,
-                    PackageCount = packageCount,
-                    PackageIndex = packageIndex,
-                    InfoCount = index,
-                    ResInfo = {netResInfosLast},
-                };
-                ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-                ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_RES OK - Package:{packageIndex}/{packageCount} - InfoCount:{index} - TotalCount:{roomLogic.ResManager.AllRes.Count}");
-            }
-            return;
-        }
-        else
-        {
-            msg = $"room not found! RoomId:{input.RoomId}";
-            ServerRoomManager.Instance.Log("MSG: DOWNLOAD_RES - " + msg);
-        }
-
-        {
-            DownloadResReply output = new DownloadResReply()
-            {
-                RoomId = input.RoomId,
-                Ret = false,
-                ErrMsg = msg,
-            };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadResReply, output.ToByteArray());
-        }
-    }
     #endregion
 }
