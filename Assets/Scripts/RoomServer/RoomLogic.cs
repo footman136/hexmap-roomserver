@@ -261,12 +261,12 @@ public class RoomLogic
         ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account}");
     }
 
-    public void LoadPlayer(PlayerInfo pi)
+    public bool LoadPlayer(PlayerInfo pi)
     {
         if (pi == null)
         {
             ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - Player not found!");
-            return;
+            return false;
         }
         
         string tableName = $"MAP:{RoomId}";
@@ -275,12 +275,13 @@ public class RoomLogic
         if (playerBytes == null)
         {
             ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist! 如果是新玩家则不是错误! - Player:{pi.Enter.Account} - Key:{keyName}");
-            return;
+            return false;
         }
 
         ServerRoomManager.Instance.Log(!pi.LoadBuffer(playerBytes, playerBytes.Length)
             ? $"RoomLogic LoadPlayer Error - Player LoadBuffer Failed! - Player:{pi.Enter.Account}"
             : $"RoomLogic LoadPlayer OK - Player:{pi.Enter.Account}");
+        return true;
     }
     
     #endregion
@@ -299,7 +300,16 @@ public class RoomLogic
             RoomId = _roomId,
             IsCreatedByMe = tokenId == _creator,
         };
-        LoadPlayer(pi);
+        if (!LoadPlayer(pi))
+        { // 如果没有存盘,则读取初始数据
+            var csv = CsvDataManager.Instance.GetTable("battle_init");
+            int wood = csv.GetValueInt(1, "PlayerInit_Wood");
+            int food = csv.GetValueInt(1, "PlayerInit_Food");
+            int iron = csv.GetValueInt(1, "PlayerInit_Iron");
+            pi.AddWood(wood);
+            pi.AddFood(food);
+            pi.AddIron(iron);
+        }
         Players[args] = pi;
         _curPlayerCount = Players.Count;
         ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
