@@ -545,11 +545,16 @@ public class RoomMsgReply
                 
                 Name = ab.Name,
                 Hp = ab.Hp,
+                HpMax = ab.HpMax,
                 AttackPower = ab.AttackPower,
                 DefencePower = ab.DefencePower,
                 Speed = ab.Speed,
                 FieldOfVision = ab.FieldOfVision,
                 ShootingRange = ab.ShootingRange,
+                
+                AttackDuration = ab.AttackDuration,
+                AttackInterval = ab.AttackInterval,
+                AmmuBase = ab.AmmuBase,
                 
                 Ret = true,
             };

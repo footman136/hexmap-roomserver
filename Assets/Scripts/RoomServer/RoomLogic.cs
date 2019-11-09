@@ -66,11 +66,14 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
-        MsgDispatcher.RegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
+        MsgDispatcher.RegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
         
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdateRes, OnUpdateRes);
+        
+        MsgDispatcher.RegisterMsg((int)ROOM.FightStart, OnFightStart);
+        MsgDispatcher.RegisterMsg((int)ROOM.FightStop, OnFightStop);
         
     }
 
@@ -83,11 +86,14 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
-        MsgDispatcher.UnRegisterMsg((int)ROOM.UpdatePos, OnUpdatePos);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateRes, OnUpdateRes);
+        
+        MsgDispatcher.UnRegisterMsg((int)ROOM.FightStart, OnFightStart);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.FightStop, OnFightStop);
     }
     
     #endregion
@@ -462,7 +468,7 @@ public class RoomLogic
                 Species = input.Species,
                 ActorInfoId = input.ActorInfoId,
             };
-            ab.LoadFromTable(out ab.Name, out ab.Hp, out ab.AttackPower, out ab.DefencePower, 
+            ab.LoadFromTable(out ab.Name, out ab.Hp, out ab.HpMax, out ab.AttackPower, out ab.DefencePower, 
                 out ab.Speed, out ab.FieldOfVision, out ab.ShootingRange);
             ActorManager.AddActor(ab);
             
@@ -481,11 +487,16 @@ public class RoomLogic
                 
                 Name = ab.Name,
                 Hp = ab.Hp,
+                HpMax = ab.HpMax,
                 AttackPower = ab.AttackPower,
                 DefencePower = ab.DefencePower,
                 Speed = ab.Speed,
                 FieldOfVision = ab.FieldOfVision,
                 ShootingRange = ab.ShootingRange,
+                
+                AttackDuration = ab.AttackDuration,
+                AttackInterval = ab.AttackInterval,
+                AmmuBase = ab.AmmuBase,
                 
                 Ret = true,
             };
@@ -563,9 +574,9 @@ public class RoomLogic
         BroadcastMsg(ROOM_REPLY.TroopAiStateReply, output.ToByteArray());
     }
 
-    private void OnUpdatePos(SocketAsyncEventArgs args, byte[] bytes)
+    private void OnUpdateActorPos(SocketAsyncEventArgs args, byte[] bytes)
     {
-        UpdatePos input = UpdatePos.Parser.ParseFrom(bytes);
+        UpdateActorPos input = UpdateActorPos.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         var ab = ActorManager.GetActor(input.ActorId);
@@ -690,6 +701,78 @@ public class RoomLogic
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateResReply, output.ToByteArray());
     }
+    
+    #endregion
+    
+    #region 消息处理 - 战斗
+
+    private void OnFightStart(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        FightStart input = FightStart.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        
+        FightStartReply output = new FightStartReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            TargetId = input.TargetId,
+            SkillId = input.SkillId,
+            Ret = true,
+        };
+        // 广播
+        BroadcastMsg(ROOM_REPLY.FightStartReply, output.ToByteArray());
+    }
+
+    private void OnFightStop(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        FightStop input = FightStop.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        
+        // 战斗计算
+        var attacker = ActorManager.GetActor(input.ActorId);
+        if (attacker != null)
+        {
+            FightStopReply output = new FightStopReply()
+            {
+                Ret = false,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
+            return;
+        }
+        var defender = ActorManager.GetActor(input.TargetId);
+        if (defender != null)
+        {
+            FightStopReply output = new FightStopReply()
+            {
+                Ret = false,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
+            return;
+        }
+        // 减法公式
+        int damage = (int)Mathf.CeilToInt(attacker.AttackPower - defender.DefencePower);
+        if (defender.Hp - damage < 0)
+        {
+            defender.Hp = 0;
+        }
+
+        {
+            FightStopReply output = new FightStopReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                TargetId = input.TargetId,
+                Damage = damage,
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
+        }
+    }
+    
     
     #endregion
 }

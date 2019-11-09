@@ -32,11 +32,16 @@ namespace AI
         
         public string Name;
         public int Hp;
+        public int HpMax;
         public float AttackPower;
         public float DefencePower;
         public float Speed;
-        public float FieldOfVision;
-        public float ShootingRange;
+        public float FieldOfVision; // 视野
+        public float ShootingRange; // 射程
+
+        public float AttackDuration; // 攻击持续时间
+        public float AttackInterval; // 攻击间隔
+        public int AmmuBase; // 弹药基数
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -60,27 +65,8 @@ namespace AI
             StateMachine = new StateMachineActor(this);
         }
 
-        public void Init(long roomId, long ownerId, long actorId, int posX, int posZ, int cellIndex, float orientation, 
-            string species, int actorInfoId,
-            string name, int hp, float attackPower, float defencePower, float speed, float fieldOfVision, float shootingRange)
+        public void Init()
         {
-            RoomId = roomId;
-            OwnerId = ownerId;
-            ActorId = actorId;
-            PosX = posX;
-            PosZ = posZ;
-            CellIndex = cellIndex;
-            Orientation = orientation;
-            Species = species;
-            ActorInfoId = actorInfoId;
-
-            Name = name;
-            Hp = hp;
-            AttackPower = attackPower;
-            DefencePower = defencePower;
-            Speed = speed;
-            FieldOfVision = fieldOfVision;
-            ShootingRange = shootingRange;
         }
         public void Fini()
         {
@@ -116,7 +102,7 @@ namespace AI
         
         #region 存盘
 
-        public void LoadFromTable(out string name, out int hp, out float attackPower, out float defencePower,
+        public void LoadFromTable(out string name, out int hp, out int hpMax, out float attackPower, out float defencePower,
             out float speed, out float fieldOfVision, out float shootingRange)
         {
             var csv = CsvDataManager.Instance.GetTable("actor_info");
@@ -125,6 +111,7 @@ namespace AI
                 Debug.LogError($"ActorBehaviour LoadFromTable Error - table not found:actor_info");
                 name = "";
                 hp = 0;
+                hpMax = 0;
                 attackPower = 0;
                 defencePower = 0;
                 speed = 0;
@@ -135,11 +122,16 @@ namespace AI
 
             name = csv.GetValue(ActorInfoId, "Name");
             hp = csv.GetValueInt(ActorInfoId, "Hp");
+            hpMax = csv.GetValueInt(ActorInfoId, "Hp");
             attackPower = csv.GetValueFloat(ActorInfoId, "AttackPower");
             defencePower = csv.GetValueFloat(ActorInfoId, "DefencePower");
             speed = csv.GetValueFloat(ActorInfoId, "Speed");
             fieldOfVision = csv.GetValueFloat(ActorInfoId, "FieldOfVision");
             shootingRange = csv.GetValueFloat(ActorInfoId, "ShootingRange");
+            
+            AttackDuration = csv.GetValueFloat(ActorInfoId, "AttackDuration");
+            AttackInterval = csv.GetValueFloat(ActorInfoId, "AttackInterval");
+            AmmuBase = csv.GetValueInt(ActorInfoId, "AmmuBase");
         }
     
         public void SaveBuffer(BinaryWriter bw)
@@ -156,14 +148,19 @@ namespace AI
 
             bw.Write(Name);
             bw.Write(Hp);
+            bw.Write(HpMax);
             bw.Write(AttackPower);
             bw.Write(DefencePower);
             bw.Write(Speed);
             bw.Write(FieldOfVision);
             bw.Write(ShootingRange);
+            
+            bw.Write(AttackDuration);
+            bw.Write(AttackInterval);
+            bw.Write(AmmuBase);
         }
 
-        public void LoadBuffer(BinaryReader br)
+        public void LoadBuffer(BinaryReader br, int header)
         {
             RoomId = br.ReadInt64();
             OwnerId = br.ReadInt64();
@@ -177,11 +174,20 @@ namespace AI
 
             Name = br.ReadString();
             Hp = br.ReadInt32();
+            if(header >= 2)
+                HpMax = br.ReadInt32();
             AttackPower = br.ReadSingle();
             DefencePower = br.ReadSingle();
             Speed = br.ReadSingle();
             FieldOfVision = br.ReadSingle();
             ShootingRange = br.ReadSingle();
+
+            if (header >= 2)
+            {
+                AttackDuration = br.ReadSingle();
+                AttackInterval = br.ReadSingle();
+                AmmuBase = br.ReadInt32();
+            }
         }
         
         #endregion

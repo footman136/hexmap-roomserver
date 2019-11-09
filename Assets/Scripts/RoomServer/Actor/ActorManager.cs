@@ -15,6 +15,7 @@ namespace AI
         public void AddActor(ActorBehaviour ab)
         {
             AllActors[ab.ActorId] = ab;
+            ab.Init();
         }
 
         public bool RemoveActor(long actorId)
@@ -47,7 +48,7 @@ namespace AI
         {
             MemoryStream ms = new MemoryStream();
             BinaryWriter bw = new BinaryWriter(ms);
-            int version = 1;
+            int version = 2;
             bw.Write(version);
             bw.Write(AllActors.Count);
             int index = 0;
@@ -83,7 +84,7 @@ namespace AI
                 }
     
                 ActorBehaviour ab = new ActorBehaviour();
-                ab.LoadBuffer(br);
+                ab.LoadBuffer(br, version);
                 AddActor(ab);
             }
             ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");
