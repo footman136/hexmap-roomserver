@@ -496,7 +496,7 @@ public class RoomLogic
                 
                 AttackDuration = ab.AttackDuration,
                 AttackInterval = ab.AttackInterval,
-                AmmuBase = ab.AmmuBase,
+                AmmoBase = ab.AmmoBase,
                 
                 Ret = true,
             };

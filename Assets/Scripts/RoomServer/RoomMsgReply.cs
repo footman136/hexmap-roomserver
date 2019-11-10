@@ -554,7 +554,7 @@ public class RoomMsgReply
                 
                 AttackDuration = ab.AttackDuration,
                 AttackInterval = ab.AttackInterval,
-                AmmuBase = ab.AmmuBase,
+                AmmoBase = ab.AmmoBase,
                 
                 Ret = true,
             };

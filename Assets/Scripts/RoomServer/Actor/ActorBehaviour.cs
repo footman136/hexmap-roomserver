@@ -41,7 +41,7 @@ namespace AI
 
         public float AttackDuration; // 攻击持续时间
         public float AttackInterval; // 攻击间隔
-        public int AmmuBase; // 弹药基数
+        public int AmmoBase; // 弹药基数
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -131,7 +131,7 @@ namespace AI
             
             AttackDuration = csv.GetValueFloat(ActorInfoId, "AttackDuration");
             AttackInterval = csv.GetValueFloat(ActorInfoId, "AttackInterval");
-            AmmuBase = csv.GetValueInt(ActorInfoId, "AmmuBase");
+            AmmoBase = csv.GetValueInt(ActorInfoId, "AmmuBase");
         }
     
         public void SaveBuffer(BinaryWriter bw)
@@ -157,7 +157,7 @@ namespace AI
             
             bw.Write(AttackDuration);
             bw.Write(AttackInterval);
-            bw.Write(AmmuBase);
+            bw.Write(AmmoBase);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -186,7 +186,7 @@ namespace AI
             {
                 AttackDuration = br.ReadSingle();
                 AttackInterval = br.ReadSingle();
-                AmmuBase = br.ReadInt32();
+                AmmoBase = br.ReadInt32();
             }
         }
         
