@@ -1,20 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using LitJson;
 using UnityEngine;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using Google.Protobuf;
 using Main;
-using Protobuf.Lobby;
 // https://blog.csdn.net/u014308482/article/details/52958148
 using Protobuf.Room;
-using UnityEngine.Experimental.PlayerLoop;
-using Object = UnityEngine.Object;
-using PlayerEnter = Protobuf.Room.PlayerEnter;
-using PlayerEnterReply = Protobuf.Room.PlayerEnterReply;
-using RoomInfo = Protobuf.Room.NetRoomInfo;
 using GameUtils;
 using Actor;
 using AI;
@@ -108,17 +99,31 @@ public class RoomMsgReply
         {
             Enter = input,
         };
-        bool ret = ServerRoomManager.Instance.AddPlayer(_args, pi);
-        if (!ret)
-        { // 重复登录了,登录失败!
-            PlayerEnterReply output = new PlayerEnterReply()
+        
+        //检测是否重复登录,如果发现曾经有人登录,则将前面的人踢掉
+        var alreadyLoggedIn = ServerRoomManager.Instance.FindDuplicatedPlayer(input.TokenId);
+        if (alreadyLoggedIn != null)
+        {
+            PlayerInfo oldPlayer = ServerRoomManager.Instance.GetPlayer(alreadyLoggedIn);
+            if (oldPlayer != null)
             {
-                Ret = false,
-            };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
-            return;
+                string roomName = "";
+                RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(oldPlayer.RoomId);
+                if (roomLogic != null)
+                {
+                    roomName = roomLogic.RoomName;
+                }
+                LeaveRoomReply output = new LeaveRoomReply()
+                {
+                    RoomName = roomName,
+                    Ret = true,
+                };
+                ServerRoomManager.Instance.SendMsg(alreadyLoggedIn, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
+                ServerRoomManager.Instance.RemovePlayer(alreadyLoggedIn, true);
+            }
         }
-        ServerRoomManager.Instance.Log($"MSG: PLAYER_ENTER - 玩家登录战场服务器 - {input.Account}");
+        
+        ServerRoomManager.Instance.AddPlayer(_args, pi);
 
         {
             PlayerEnterReply output = new PlayerEnterReply()
@@ -383,19 +388,10 @@ public class RoomMsgReply
                 roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
                 ServerRoomManager.Instance.SetPlayerInfo(_args, pi);
-            
+
                 // 通知大厅
-                UpdateRoomInfo output2 = new UpdateRoomInfo()
-                {
-                    RoomId = roomLogic.RoomId,
-                    RoomName = roomLogic.RoomName,
-                    Creator = roomLogic.Creator,
-                    CurPlayerCount    = roomLogic.CurPlayerCount,
-                    MaxPlayerCount = roomLogic.MaxPlayerCount,
-                    IsRunning = true,
-                    IsRemove = false,
-                };
-                MixedManager.Instance.LobbyManager.SendMsg(LOBBY.UpdateRoomInfo, output2.ToByteArray());
+                ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
+                
                 // 返回成功
                 EnterRoomReply output = new EnterRoomReply()
                 {
@@ -435,6 +431,9 @@ public class RoomMsgReply
         RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic != null)
         {
+            // 通知大厅
+            ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
+            
             string account = roomLogic.GetPlayer(_args)?.Enter.Account;
             ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - 玩家离开战场！Account:{account} - Room:{roomLogic.RoomName}");
             ServerRoomManager.Instance.RemovePlayer(_args, input.ReleaseIfNoUser);

@@ -217,6 +217,18 @@ public class ServerRoomManager : MonoBehaviour
     {
         if (Players.ContainsKey(args))
         {
+            var pi = GetPlayer(args);
+            RoomLogic roomLogic = null;
+            if (pi != null)
+            {
+                roomLogic = GetRoomLogic(pi.RoomId);
+            }
+            if (roomLogic != null)
+            {
+                // 通知大厅
+                UpdateRoomInfoToLobby(roomLogic);
+            }
+            
             Log($"MSG: DropAClient - 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
             RemovePlayer(args, true);
         }
@@ -224,6 +236,22 @@ public class ServerRoomManager : MonoBehaviour
         {
             Log("MSG: DropAClient - Remove Player failed - Player not found!");
         }
+    }
+
+    public void UpdateRoomInfoToLobby(RoomLogic roomLogic)
+    {
+        // 通知大厅(往大厅发送消息)
+        Protobuf.Lobby.UpdateRoomInfo output2 = new Protobuf.Lobby.UpdateRoomInfo()
+        {
+            RoomId = roomLogic.RoomId,
+            RoomName = roomLogic.RoomName,
+            Creator = roomLogic.Creator,
+            CurPlayerCount    = roomLogic.CurPlayerCount,
+            MaxPlayerCount = roomLogic.MaxPlayerCount,
+            IsRunning = true,
+            IsRemove = false,
+        };
+        MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
     }
 
     public void UpdateName()
@@ -274,22 +302,6 @@ public class ServerRoomManager : MonoBehaviour
                 IsRemove = true,
             };
             MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
-                // 存盘这个事情先放一放，因为：
-                // 1，服务器目前还没有全部的地图数据
-                // 2，里面的Actor我想单独写地方来保存，而不是用它原有的结构。因为未来游戏主要会在这里进行拓展
-                // Oct.24.2019. Liu Gang. 
-//                        int size = 256 * 1024;
-//                        byte[] totalMapData = new byte[size];
-//                        roomLogic._hexmapHelper.Save(ref totalMapData, ref size);
-//                        // 存盘
-//                        string tableName = $"MAP:{roomLogic.RoomId}";
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "Creator", roomLogic.Creator);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomId", roomLogic.RoomId);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "RoomName", roomLogic.RoomName);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MaxPlayerCount", roomLogic.MaxPlayerCount);
-//                        RoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapData", totalMapData);
-//                        
-//                        RoomManager.Instance.Log($"MSG: LEAVE_ROOM - 存盘成功！房间名:{roomLogic.RoomName} - RoomId:{roomLogic.RoomId}");
         }
         RemovePlayerFromRoom(args);
         Players.Remove(args);
@@ -324,6 +336,21 @@ public class ServerRoomManager : MonoBehaviour
             Rooms[roomId].RemovePlayer(args);
         }
     }
+    
+    public SocketAsyncEventArgs FindDuplicatedPlayer(long tokenId)
+    {
+        foreach (var keyValue in Players)
+        {
+            var pe = keyValue.Value;
+            if (pe.Enter.TokenId == tokenId)
+            {
+                return keyValue.Key;
+            }
+        }
+
+        return null;
+    }
+
     
     #endregion
     
