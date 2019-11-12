@@ -36,7 +36,7 @@ public class ServerRoomManager : MonoBehaviour
     [Space(), Header("Debug"), Space(5)]
     public bool IsCheckHeartBeat;
     
-    private const float _heartBeatTimeInterval = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
+    private const float _heartBeatTimeInterval = 30f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
 
     void Awake()
     {
@@ -134,10 +134,12 @@ public class ServerRoomManager : MonoBehaviour
         List<SocketAsyncEventArgs> delPlayerList = new List<SocketAsyncEventArgs>();
         foreach (var keyValue in Players)
         {
-            var ts = now - keyValue.Value.HeartBeatTime;
-            if (ts.TotalSeconds > _heartBeatTimeInterval)
-            { // 改客户端超时没有心跳了,干掉
+            var pi = keyValue.Value;
+            var ts = now - pi.HeartBeatTime;
+            if (pi.IsReady && ts.TotalSeconds > _heartBeatTimeInterval)
+            { // 该客户端超时没有心跳了,干掉. 客户端必须是已经进入房间的,因为loading时间较长
                 delPlayerList.Add(keyValue.Key);
+                _server.Log($"长时间没有检测到心跳,将客户端踢出! - {pi.Enter.Account}");
             }
         }
         foreach (var args in delPlayerList)

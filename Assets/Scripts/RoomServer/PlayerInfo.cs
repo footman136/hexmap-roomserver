@@ -10,6 +10,7 @@ namespace Actor
         public long RoomId;
         public DateTime HeartBeatTime;
         public bool IsCreatedByMe;
+        public bool IsReady;
         
         private int _wood;
         private int _food;
@@ -18,6 +19,11 @@ namespace Actor
         public int Wood => _wood;
         public int Food => _food;
         public int Iron => _iron;
+
+        public PlayerInfo()
+        {
+            IsReady = false;
+        }
 
         public void AddWood(int amount)
         {

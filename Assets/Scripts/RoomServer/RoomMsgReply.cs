@@ -120,6 +120,8 @@ public class RoomMsgReply
                 };
                 ServerRoomManager.Instance.SendMsg(alreadyLoggedIn, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
                 ServerRoomManager.Instance.RemovePlayer(alreadyLoggedIn, true);
+                string msg = "踢掉之前登录的本用户.";
+                ServerRoomManager.Instance.Log($"MSG: PLAYER_ENTER WARNING - " + msg + $" - {oldPlayer.Enter.Account}");
             }
         }
         
@@ -594,7 +596,8 @@ public class RoomMsgReply
                 ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadActorsReply, output.ToByteArray());
                 return;
             }
-            
+
+            pi.IsReady = true; // 客户端准备好了,可以检测心跳
             long OwnerId = pi.Enter.TokenId;
 
             {
