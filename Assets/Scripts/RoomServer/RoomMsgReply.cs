@@ -108,14 +108,25 @@ public class RoomMsgReply
         {
             Enter = input,
         };
-        ServerRoomManager.Instance.AddPlayer(_args, pi);
+        bool ret = ServerRoomManager.Instance.AddPlayer(_args, pi);
+        if (!ret)
+        { // 重复登录了,登录失败!
+            PlayerEnterReply output = new PlayerEnterReply()
+            {
+                Ret = false,
+            };
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+            return;
+        }
         ServerRoomManager.Instance.Log($"MSG: PLAYER_ENTER - 玩家登录战场服务器 - {input.Account}");
 
-        PlayerEnterReply output = new PlayerEnterReply()
         {
-            Ret = true,
-        };
-        ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+            PlayerEnterReply output = new PlayerEnterReply()
+            {
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.PlayerEnterReply, output.ToByteArray());
+        }
     }
 
     private static void HEART_BEAT(byte[] byts)

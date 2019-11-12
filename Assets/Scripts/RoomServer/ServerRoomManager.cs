@@ -235,9 +235,19 @@ public class ServerRoomManager : MonoBehaviour
     
     #region 玩家
     
-    public void AddPlayer(SocketAsyncEventArgs args, PlayerInfo pi)
+    public bool AddPlayer(SocketAsyncEventArgs args, PlayerInfo pi)
     {
-        ServerRoomManager.Instance.Players[args] = pi;
+        foreach (var keyValue in Players)
+        {
+            var playerInfo = keyValue.Value;
+            if (playerInfo.Enter.TokenId == pi.Enter.TokenId)
+            {
+                Log($"RoomManager AddPlayer Error - Duplicated player! Account:<{pi.Enter.Account}> - TokenId:<{pi.Enter.TokenId}>");
+                return false;
+            }
+        }
+        Players[args] = pi;
+        return true;
     }
     public void RemovePlayer(SocketAsyncEventArgs args, bool bCloseRoomIfNoUser)
     {
