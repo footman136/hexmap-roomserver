@@ -50,9 +50,20 @@ namespace AI
             BinaryWriter bw = new BinaryWriter(ms);
             int version = 2;
             bw.Write(version);
-            bw.Write(AllActors.Count);
-            int index = 0;
+            Dictionary<long, ActorBehaviour> newAllActors = new Dictionary<long, ActorBehaviour>();
             foreach (var keyValue in AllActors)
+            {
+                if (keyValue.Value.CellIndex == 0
+                    || (keyValue.Value.PosX == 0 && keyValue.Value.PosZ == 0))
+                {
+                    Debug.LogError("ActorManager SaveBuffer Error - Actor Position lost!!!");
+                    continue;
+                }
+                newAllActors[keyValue.Key] = keyValue.Value;
+            }
+            int index = 0;
+            bw.Write(newAllActors.Count);
+            foreach (var keyValue in newAllActors)
             {
                 bw.Write(index++);
                 keyValue.Value.SaveBuffer(bw);
@@ -85,6 +96,11 @@ namespace AI
     
                 ActorBehaviour ab = new ActorBehaviour();
                 ab.LoadBuffer(br, version);
+                if (ab.CellIndex == 0)
+                {
+                    Debug.LogError("ActorManager LoadBuffer Error - CellIndex is lost!!!");
+                    continue;
+                }
                 AddActor(ab);
             }
             ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");

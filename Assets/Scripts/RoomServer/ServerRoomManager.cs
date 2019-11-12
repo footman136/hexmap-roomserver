@@ -162,7 +162,6 @@ public class ServerRoomManager : MonoBehaviour
         {
             case ServerSocketAction.Listen:
                 // 因为启动顺序的关系，这段代码不会被执行到
-                StartCheckHeartBeat();
                 receive_str = $"RoomServer started! {_server.Address}:{_server.Port}";
                 _server.Log(receive_str);
                 break;

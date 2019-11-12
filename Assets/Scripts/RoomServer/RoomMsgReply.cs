@@ -532,6 +532,13 @@ public class RoomMsgReply
         foreach (var keyValue in roomLogic.ActorManager.AllActors)
         {
             ActorBehaviour ab = keyValue.Value;
+            
+            if (ab.CellIndex == 0)
+            {
+                Debug.LogError("DOWNLOAD_ACTORS Fuck!!! Actor position is lost!!!");
+                continue;
+            }
+            
             ActorAddReply output = new ActorAddReply()
             {
                 RoomId = ab.RoomId,
@@ -539,6 +546,7 @@ public class RoomMsgReply
                 ActorId = ab.ActorId,
                 PosX = ab.PosX,
                 PosZ = ab.PosZ,
+                CellIndex = ab.CellIndex,
                 Orientation = ab.Orientation,
                 Species = ab.Species,
                 ActorInfoId = ab.ActorInfoId,

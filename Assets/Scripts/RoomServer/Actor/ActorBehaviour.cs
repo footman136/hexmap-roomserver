@@ -131,7 +131,7 @@ namespace AI
             
             AttackDuration = csv.GetValueFloat(ActorInfoId, "AttackDuration");
             AttackInterval = csv.GetValueFloat(ActorInfoId, "AttackInterval");
-            AmmoBase = csv.GetValueInt(ActorInfoId, "AmmuBase");
+            AmmoBase = csv.GetValueInt(ActorInfoId, "AmmoBase");
         }
     
         public void SaveBuffer(BinaryWriter bw)

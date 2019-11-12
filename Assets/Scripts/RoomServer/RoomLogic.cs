@@ -384,6 +384,11 @@ public class RoomLogic
             BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
         }
 
+        if (input.CellIndex == 0)
+        {
+            Debug.LogError("OnCityAdd Fuck!!! City position is lost!!!");
+        }
+        
         bool isCapital = UrbanManager.CountOfThePlayer(input.OwnerId) == 0; // 第一座城市是都城
         UrbanCity city = new UrbanCity()
         {
@@ -456,6 +461,10 @@ public class RoomLogic
         }
         else
         {
+            if (input.CellIndex == 0)
+            {
+                Debug.LogError("OnActorAdd Fuck!!! Actor position is lost!!!");
+            }
             ActorBehaviour ab = new ActorBehaviour()
             {
                 RoomId = input.RoomId,
@@ -527,15 +536,17 @@ public class RoomLogic
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
+        if (input.CellIndexFrom == 0 || input.CellIndexTo == 0)
+        {
+            Debug.LogError("OnTroopMove Fuck!!! Actor position is lost!!!");
+        }
         TroopMoveReply output = new TroopMoveReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             ActorId = input.ActorId,
-            PosFromX = input.PosFromX,
-            PosFromZ = input.PosFromZ,
-            PosToX = input.PosToX,
-            PosToZ = input.PosToZ,
+            CellIndexFrom = input.CellIndexFrom,
+            CellIndexTo = input.CellIndexTo,
             Ret = true,
         };
         BroadcastMsg(ROOM_REPLY.TroopMoveReply, output.ToByteArray());
@@ -546,6 +557,11 @@ public class RoomLogic
         TroopAiState input = TroopAiState.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
+        
+        if (input.CellIndexFrom == 0)
+        {
+            Debug.LogError("OnTroopAiState Fuck!!! Actor position is lost!!!");
+        }
         // 更新单元坐标
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)
@@ -579,6 +595,10 @@ public class RoomLogic
         UpdateActorPos input = UpdateActorPos.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
+        if (input.CellIndex == 0)
+        {
+            Debug.LogError("OnUpdateActorPos Fuck!!! Actor position is lost!!!");
+        }
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)
         {
@@ -600,6 +620,10 @@ public class RoomLogic
         HarvestStart input = HarvestStart.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
+        if (input.CellIndex == 0)
+        {
+            Debug.LogError("OnHarvestStart Fuck!!! Actor position is lost!!!");
+        }
         HarvestStartReply output = new HarvestStartReply()
         {
             RoomId = input.RoomId,
@@ -619,6 +643,10 @@ public class RoomLogic
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
 
+        if (input.CellIndex == 0)
+        {
+            Debug.LogError("OnHarvestStop Fuck!!! Actor position is lost!!!");
+        }
         // 修改地图上的资源数据
         var hr = ResManager.GetRes(input.CellIndex);
         if (hr == null)
