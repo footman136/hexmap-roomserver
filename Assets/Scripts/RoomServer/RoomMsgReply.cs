@@ -17,10 +17,6 @@ public class RoomMsgReply
 
     #region 消息分发
 
-    public static void Init()
-    {
-    }
-    
     /// <summary>
     /// 处理服务器接收到的消息
     /// </summary>
@@ -35,10 +31,13 @@ public class RoomMsgReply
                 Debug.Log($"ProcessMsg Error - invalid data size:{size}");
                 return;
             }
-
             _args = args;
+            
             byte[] recvData = new byte[size - 4];
             Array.Copy(bytes, 4, recvData, 0, size - 4);
+
+            // 记录心跳时间,每接收到一条消息,都更新时间,而不仅仅是心跳消息
+            HEART_BEAT(null);
 
             int msgId = ParseMsgId(bytes);
             switch ((ROOM) msgId)
@@ -89,9 +88,11 @@ public class RoomMsgReply
         int msgId = BitConverter.ToInt32(recvHeader, 0);
         return msgId;
     }
+    
     #endregion
     
     #region 消息处理
+    
     private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
@@ -101,7 +102,7 @@ public class RoomMsgReply
         };
         
         //检测是否重复登录,如果发现曾经有人登录,则将前面的人踢掉
-        var alreadyLoggedIn = ServerRoomManager.Instance.FindDuplicatedPlayer(input.TokenId);
+        var alreadyLoggedIn = ServerRoomManager.Instance.FindPlayerArgs(input.TokenId);
         if (alreadyLoggedIn != null)
         {
             PlayerInfo oldPlayer = ServerRoomManager.Instance.GetPlayer(alreadyLoggedIn);
@@ -387,7 +388,7 @@ public class RoomMsgReply
             if (pi != null)
             {
                 ret = true;
-                roomLogic.AddPlayer(_args, pi.Enter.TokenId, pi.Enter.Account);
+                roomLogic.AddPlayerToRoom(_args, pi.Enter.TokenId, pi.Enter.Account);
                 pi.RoomId = input.RoomId;
                 ServerRoomManager.Instance.SetPlayerInfo(_args, pi);
 
@@ -436,7 +437,7 @@ public class RoomMsgReply
             // 通知大厅
             ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
             
-            string account = roomLogic.GetPlayer(_args)?.Enter.Account;
+            string account = roomLogic.GetPlayerInRoom(_args)?.Enter.Account;
             ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - 玩家离开战场！Account:{account} - Room:{roomLogic.RoomName}");
             ServerRoomManager.Instance.RemovePlayer(_args, input.ReleaseIfNoUser);
             ret = true;
@@ -470,7 +471,7 @@ public class RoomMsgReply
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadCitiesReply, output.ToByteArray());
             return;
         }
-        PlayerInfo pi = roomLogic.GetPlayer(_args);
+        PlayerInfo pi = roomLogic.GetPlayerInRoom(_args);
         if (pi == null)
         {
             string msg = $"当前玩家没有找到!";
@@ -582,7 +583,7 @@ public class RoomMsgReply
         }
 
         {
-            PlayerInfo pi = roomLogic.GetPlayer(_args);
+            PlayerInfo pi = roomLogic.GetPlayerInRoom(_args);
             if (pi == null)
             {
                 string msg = $"当前玩家没有找到!";

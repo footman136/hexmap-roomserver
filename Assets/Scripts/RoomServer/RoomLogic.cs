@@ -128,7 +128,7 @@ public class RoomLogic
         ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
         
         // 本玩家身上的物体的数量
-        PlayerInfo pi = GetPlayer(args);
+        PlayerInfo pi = GetPlayerInRoom(args);
         if (pi == null)
         {
             ServerRoomManager.Instance.Log("RoomLogic SaveCommonInfo Error - player not found!");
@@ -294,7 +294,7 @@ public class RoomLogic
     
     #region 玩家
     
-    public void AddPlayer(SocketAsyncEventArgs args, long tokenId, string account)
+    public void AddPlayerToRoom(SocketAsyncEventArgs args, long tokenId, string account)
     {
         PlayerInfo pi = new PlayerInfo()
         {
@@ -317,13 +317,14 @@ public class RoomLogic
             pi.AddIron(iron);
         }
         Players[args] = pi;
+        pi.Args = args;
         _curPlayerCount = Players.Count;
         ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
     }
 
-    public void RemovePlayer(SocketAsyncEventArgs args)
+    public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
     {
-        var pi = GetPlayer(args);
+        var pi = GetPlayerInRoom(args);
         SavePlayer(pi);
         if (Players.ContainsKey(args))
         {
@@ -337,7 +338,7 @@ public class RoomLogic
         ServerRoomManager.Instance.Log($"RoomLogic RemovePlayer OK - 玩家离开战场! Player:{pi.Enter.Account}");
     }
 
-    public PlayerInfo GetPlayer(SocketAsyncEventArgs args)
+    public PlayerInfo GetPlayerInRoom(SocketAsyncEventArgs args)
     {
         if (Players.ContainsKey(args))
         {
@@ -346,7 +347,7 @@ public class RoomLogic
 
         return null;
     }
-    
+
     #endregion
     
     /// <summary>
@@ -658,7 +659,7 @@ public class RoomLogic
         hr.SetAmount((ResInfo.RESOURCE_TYPE)input.ResType, input.ResRemain);
         
         // 修改玩家身上的资源数据
-        PlayerInfo pi = GetPlayer(args);
+        PlayerInfo pi = GetPlayerInRoom(args);
         if (pi == null || pi.Enter.TokenId != input.OwnerId)
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnHarvestStop Error - player not found!{input.OwnerId}");
@@ -712,7 +713,7 @@ public class RoomLogic
         UpdateRes input = UpdateRes.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfo pi = GetPlayer(args);
+        PlayerInfo pi = GetPlayerInRoom(args);
         if (pi == null || pi.Enter.TokenId != input.OwnerId)
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnUpdateRes Error - player not found!{input.OwnerId}");
@@ -761,40 +762,66 @@ public class RoomLogic
         
         // 战斗计算
         var attacker = ActorManager.GetActor(input.ActorId);
-        if (attacker != null)
+        if (attacker == null)
         {
             FightStopReply output = new FightStopReply()
             {
                 Ret = false,
+                ErrMsg = "Attacker not found!",
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
             return;
         }
         var defender = ActorManager.GetActor(input.TargetId);
-        if (defender != null)
+        if (defender == null)
         {
             FightStopReply output = new FightStopReply()
             {
                 Ret = false,
+                ErrMsg = "Defender not found!",
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
             return;
         }
         // 减法公式
         int damage = (int)Mathf.CeilToInt(attacker.AttackPower - defender.DefencePower);
-        if (defender.Hp - damage < 0)
+        if (damage == 0)
+            damage = 1;
+        defender.Hp = defender.Hp - damage;
+        if (defender.Hp < 0)
         {
             defender.Hp = 0;
         }
 
-        {
+        {// 血量, 群发
+            UpdateActorInfoReply output = new UpdateActorInfoReply()
+            {
+                RoomId = defender.RoomId,
+                OwnerId = defender.OwnerId,
+                ActorId = defender.ActorId,
+                Hp = defender.Hp,
+            };
+            BroadcastMsg(ROOM_REPLY.UpdateActorInfoReply, output.ToByteArray());
+        }
+
+        {// 飙血, 群发
+            SprayBloodReply output = new SprayBloodReply()
+            {
+                RoomId = defender.RoomId,
+                OwnerId = defender.OwnerId,
+                ActorId = defender.ActorId,
+                Damage = damage,
+                Ret = true,
+            };
+            BroadcastMsg(ROOM_REPLY.SprayBloodReply, output.ToByteArray());
+        }
+        {// 本次攻击结束
             FightStopReply output = new FightStopReply()
             {
                 RoomId = input.RoomId,
                 OwnerId = input.OwnerId,
                 ActorId = input.ActorId,
                 TargetId = input.TargetId,
-                Damage = damage,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());

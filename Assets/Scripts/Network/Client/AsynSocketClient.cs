@@ -229,6 +229,7 @@ public class AsynSocketClient
         #endregion
  
         #region 发送数据
+        
         /// <summary>
         /// 异步发送消息
         /// </summary>
@@ -247,13 +248,14 @@ public class AsynSocketClient
                 {
                     throw new Exception("连接已经断开");
                 }
+
                 if (isStopWork)
                 {
                     return;
                 }
 
                 // 真正的互联网环境下会有消息包被截断的情况，所以发送的时候必须在开始定义4个字节的包长度，目前是测试阶段，暂时不开放。
-                byte[] bytesRealSend = new byte[bytes.Length+4];
+                byte[] bytesRealSend = new byte[bytes.Length + 4];
                 byte[] bytesHeader = System.BitConverter.GetBytes(bytes.Length);
                 Array.Copy(bytesHeader, 0, bytesRealSend, 0, 4);
                 Array.Copy(bytes, 0, bytesRealSend, 4, bytes.Length);
@@ -262,23 +264,31 @@ public class AsynSocketClient
                     TcpClient = tcpClient,
                     ListData = bytesRealSend,
                 };
-                tcpClient.Client.BeginSend(bytesRealSend, 0, bytesRealSend.Length, SocketFlags.None, SendCallBack, state);
+                tcpClient.Client.BeginSend(bytesRealSend, 0, bytesRealSend.Length, SocketFlags.None, SendCallBack,
+                    state);
                 //tcpClient.Client.BeginSend(bytes, 0, bytes.Length, SocketFlags.None, SendCallBack, state);
             }
             catch (SocketException ex)
             {
-                if (ex.ErrorCode == (int)SocketError.ConnectionAborted)
+                if (ex.ErrorCode == (int) SocketError.ConnectionAborted)
                 {
+                    Stop();
                     string err = $"Exceptioin - SendAsync() - 连接已经放弃! - {ex}";
                     OnComplete(tcpClient, SocketAction.Error, err);
                 }
                 else
                 {
+                    Stop();
                     string err = $"Exceptioin - SendAsync() - {ex}";
                     OnComplete(tcpClient, SocketAction.Error, err);
                 }
             }
-          
+            catch (ObjectDisposedException ex)
+            {
+                Stop();
+                string err = $"Exceptioin - SendAsync() - {ex}";
+                OnComplete(tcpClient, SocketAction.Error, err);
+            }
         }
  
         private void SendCallBack(IAsyncResult ar)
@@ -293,6 +303,18 @@ public class AsynSocketClient
                 string msg = $"Send a message : {stateObj.ListData.Length} bytes";
                 OnComplete(client, SocketAction.Send, msg);
             }
+            catch (SocketException ex)
+            {
+                Stop();
+                string err = $"Exception - SendCallBack() - {ex}";
+                OnComplete(client, SocketAction.Error, err);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Stop();
+                string err = $"Exception - SendCallBack() - {ex}";
+                OnComplete(client, SocketAction.Error, err);
+            }
             catch (Exception ex)
             {
                 //如果发生异常，说明客户端失去连接，触发关闭事件
@@ -301,6 +323,7 @@ public class AsynSocketClient
                 OnComplete(client, SocketAction.Error, err);
             }
         }
+        
         #endregion
  
         #region OnComoplete

@@ -36,7 +36,7 @@ public class ServerRoomManager : MonoBehaviour
     [Space(), Header("Debug"), Space(5)]
     public bool IsCheckHeartBeat;
     
-    private const float _heartBeatTimeInterval = 30f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
+    private const float _heartBeatTimeInterval = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
 
     void Awake()
     {
@@ -50,7 +50,6 @@ public class ServerRoomManager : MonoBehaviour
         Rooms = new Dictionary<long, RoomLogic>();
         _server = GetComponent<ServerScript>();
         _redis = GetComponent<RedisManager>();
-        RoomMsgReply.Init();
     }
 
     #region 初始化
@@ -335,11 +334,11 @@ public class ServerRoomManager : MonoBehaviour
 
         if (roomId != -1)
         {
-            Rooms[roomId].RemovePlayer(args);
+            Rooms[roomId].RemovePlayerFromRoom(args);
         }
     }
     
-    public SocketAsyncEventArgs FindDuplicatedPlayer(long tokenId)
+    public SocketAsyncEventArgs FindPlayerArgs(long tokenId)
     {
         foreach (var keyValue in Players)
         {
