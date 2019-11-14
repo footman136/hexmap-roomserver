@@ -317,7 +317,6 @@ public class RoomLogic
             pi.AddIron(iron);
         }
         Players[args] = pi;
-        pi.Args = args;
         _curPlayerCount = Players.Count;
         ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
     }
@@ -760,7 +759,7 @@ public class RoomLogic
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
-        // 战斗计算
+        // 1-攻击者
         var attacker = ActorManager.GetActor(input.ActorId);
         if (attacker == null)
         {
@@ -772,6 +771,8 @@ public class RoomLogic
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
             return;
         }
+        
+        // 2-防御者
         var defender = ActorManager.GetActor(input.TargetId);
         if (defender == null)
         {
@@ -783,28 +784,42 @@ public class RoomLogic
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
             return;
         }
-        // 减法公式
+        
+        // 3-战斗计算 - 减法公式
         int damage = (int)Mathf.CeilToInt(attacker.AttackPower - defender.DefencePower);
         if (damage == 0)
             damage = 1;
         defender.Hp = defender.Hp - damage;
-        if (defender.Hp < 0)
+        
+        // 5-如果已经死亡
+        if (defender.Hp <= 0)
         {
             defender.Hp = 0;
+            ActorRemoveReply output = new ActorRemoveReply()
+            {
+                RoomId = defender.RoomId,
+                OwnerId = defender.OwnerId,
+                ActorId = defender.ActorId,
+                DieType = 1,
+                Ret = true,
+            };
+            ActorManager.RemoveActor(defender.ActorId);
+            BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
+            return;
         }
 
-        {// 血量, 群发
+        {// 8-血量, 群发
             UpdateActorInfoReply output = new UpdateActorInfoReply()
             {
                 RoomId = defender.RoomId,
                 OwnerId = defender.OwnerId,
                 ActorId = defender.ActorId,
                 Hp = defender.Hp,
+                Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.UpdateActorInfoReply, output.ToByteArray());
         }
-
-        {// 飙血, 群发
+        {// 9-飙血, 群发
             SprayBloodReply output = new SprayBloodReply()
             {
                 RoomId = defender.RoomId,
@@ -815,7 +830,7 @@ public class RoomLogic
             };
             BroadcastMsg(ROOM_REPLY.SprayBloodReply, output.ToByteArray());
         }
-        {// 本次攻击结束
+        {// 10-本次攻击结束
             FightStopReply output = new FightStopReply()
             {
                 RoomId = input.RoomId,
