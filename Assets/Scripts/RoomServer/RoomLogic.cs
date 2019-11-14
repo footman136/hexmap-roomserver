@@ -835,6 +835,8 @@ public class RoomLogic
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
         }
 
+        // 临时调试,打一下,就死亡
+        //if(isEnemyDead)
         {// 11-挨打者死了, 发送删除单位的消息
             ActorRemoveReply output = new ActorRemoveReply()
             {
@@ -846,7 +848,6 @@ public class RoomLogic
             };
             ActorManager.RemoveActor(defender.ActorId);
             BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
-            
         }
     }
     
