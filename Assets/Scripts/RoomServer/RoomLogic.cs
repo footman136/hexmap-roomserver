@@ -583,6 +583,7 @@ public class RoomLogic
             PosZTo = input.PosZTo,
             CellIndexFrom = input.CellIndexFrom,
             CellIndexTo = input.CellIndexTo,
+            TargetId = input.TargetId,
             Speed = input.Speed,
             Ret = true,
         };
@@ -792,20 +793,11 @@ public class RoomLogic
         defender.Hp = defender.Hp - damage;
         
         // 5-如果已经死亡
+        bool isEnemyDead = false;
         if (defender.Hp <= 0)
         {
             defender.Hp = 0;
-            ActorRemoveReply output = new ActorRemoveReply()
-            {
-                RoomId = defender.RoomId,
-                OwnerId = defender.OwnerId,
-                ActorId = defender.ActorId,
-                DieType = 1,
-                Ret = true,
-            };
-            ActorManager.RemoveActor(defender.ActorId);
-            BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
-            return;
+            isEnemyDead = true;
         }
 
         {// 8-血量, 群发
@@ -837,9 +829,24 @@ public class RoomLogic
                 OwnerId = input.OwnerId,
                 ActorId = input.ActorId,
                 TargetId = input.TargetId,
+                IsEnemyDead = isEnemyDead,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
+        }
+
+        {// 11-挨打者死了, 发送删除单位的消息
+            ActorRemoveReply output = new ActorRemoveReply()
+            {
+                RoomId = defender.RoomId,
+                OwnerId = defender.OwnerId,
+                ActorId = defender.ActorId,
+                DieType = 1,
+                Ret = true,
+            };
+            ActorManager.RemoveActor(defender.ActorId);
+            BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
+            
         }
     }
     
