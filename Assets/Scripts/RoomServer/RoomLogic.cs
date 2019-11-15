@@ -567,8 +567,6 @@ public class RoomLogic
         if (ab != null)
         {
             ab.CellIndex = input.CellIndexFrom;
-            ab.PosX = input.PosXFrom;
-            ab.PosZ = input.PosZFrom;
         }
         
         TroopAiStateReply output = new TroopAiStateReply()
@@ -576,14 +574,11 @@ public class RoomLogic
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             ActorId = input.ActorId,
+            TargetId = input.TargetId,
             State = input.State,
-            PosXFrom = input.PosXFrom,
-            PosZFrom = input.PosZFrom,
-            PosXTo = input.PosXTo,
-            PosZTo = input.PosZTo,
             CellIndexFrom = input.CellIndexFrom,
             CellIndexTo = input.CellIndexTo,
-            TargetId = input.TargetId,
+            Orientation = input.Orientation,
             Speed = input.Speed,
             Ret = true,
         };
