@@ -45,11 +45,16 @@ namespace AI
         public float AttackInterval; // 攻击间隔
         public int AmmoBase; // 弹药基数
         public int AmmoBaseMax; // 最大弹药基数
+        
+        // AI params
+        public int AiState;
+        public long AiTargetId;
+        public int AiCellIndexTo;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
 
-        public StateMachineActor StateMachine;
+        //public StateMachineActor StateMachine; // 目前都是在客户端进行AI,这里暂时没用
         public Vector2 TargetPosition;
         public Vector2 CurrentPosition;
         private float _distance;
@@ -67,7 +72,7 @@ namespace AI
         public ActorBehaviour()
         {
             TIME_DELAY = 1f;
-            StateMachine = new StateMachineActor(this);
+            //StateMachine = new StateMachineActor(this);
         }
 
         public void Init(RoomLogic roomLogic)
@@ -86,7 +91,7 @@ namespace AI
         public void Tick()
         {
             _distance = Vector3.Distance(CurrentPosition, TargetPosition);
-            StateMachine.Tick();
+            //StateMachine.Tick();
             
             timeNow += Time.deltaTime;
             if (timeNow < TIME_DELAY)
@@ -97,7 +102,7 @@ namespace AI
             timeNow = 0;
         
             // AI的执行频率要低一些
-            AI_Running();
+            //AI_Running();
         }
 
         public void Log(string msg)
@@ -159,6 +164,11 @@ namespace AI
             bw.Write(AttackInterval);
             bw.Write(AmmoBase);
             bw.Write(AmmoBaseMax);
+            
+            // AI state params
+            bw.Write(AiState);
+            bw.Write(AiTargetId);
+            bw.Write(AiCellIndexTo);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -187,6 +197,13 @@ namespace AI
             AmmoBase = br.ReadInt32();
             AmmoBaseMax = AmmoBase;
             AmmoBaseMax = br.ReadInt32();
+
+            if (header >= 4)
+            { // AI State params
+                AiState = br.ReadInt32();
+                AiTargetId = br.ReadInt64();
+                AiCellIndexTo = br.ReadInt32();
+            }
         }
         
         #endregion
@@ -220,44 +237,44 @@ namespace AI
     #endregion
         
         #region AI - 第一层
-        IEnumerator Running()
-        {
-            yield return new WaitForSeconds(ScriptableActorStats.thinkingFrequency);
-            while (true)
-            {
-                AI_Running();
-            
-                yield return new WaitForSeconds(ScriptableActorStats.thinkingFrequency);
-            }
-        }
+//        IEnumerator Running()
+//        {
+//            yield return new WaitForSeconds(ScriptableActorStats.thinkingFrequency);
+//            while (true)
+//            {
+//                AI_Running();
+//            
+//                yield return new WaitForSeconds(ScriptableActorStats.thinkingFrequency);
+//            }
+//        }
         #endregion
         
         #region AI - 第二层
 
-        private bool bFirst = true;
-        private float _lastTime = 0f;
-        private float _deltaTime;
-
-        private void AI_Running()
-        {
-            // 这里的_deltaTime是真实的每次本函数调用的时间间隔（而不是Time.deltaTime）。
-            //_deltaTime = Time.deltaTime;
-            var nowTime = Time.time;
-            _deltaTime = nowTime - _lastTime;
-            _lastTime = nowTime;
-
-            if (bFirst)
-            {
-                //newBorn();
-                _deltaTime = 0; // 第一次不记录时间延迟
-                bFirst = false;
-            }
-
-            if (CurrentPosition != TargetPosition && StateMachine.CurrentAiState != FSMStateActor.StateEnum.WALK)
-            {
-                StateMachine.TriggerTransition(FSMStateActor.StateEnum.WALK);
-            }
-        }
+//        private bool bFirst = true;
+//        private float _lastTime = 0f;
+//        private float _deltaTime;
+//
+//        private void AI_Running()
+//        {
+//            // 这里的_deltaTime是真实的每次本函数调用的时间间隔（而不是Time.deltaTime）。
+//            //_deltaTime = Time.deltaTime;
+//            var nowTime = Time.time;
+//            _deltaTime = nowTime - _lastTime;
+//            _lastTime = nowTime;
+//
+//            if (bFirst)
+//            {
+//                //newBorn();
+//                _deltaTime = 0; // 第一次不记录时间延迟
+//                bFirst = false;
+//            }
+//
+//            if (CurrentPosition != TargetPosition && StateMachine.CurrentAiState != FSMStateActor.StateEnum.WALK)
+//            {
+//                StateMachine.TriggerTransition(FSMStateActor.StateEnum.WALK);
+//            }
+//        }
 
         #endregion
     }

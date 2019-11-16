@@ -9,6 +9,7 @@ using Protobuf.Room;
 using UnityEngine;
 using Actor;
 using AI;
+using UnityEditorInternal;
 
 public class RoomLogic
 {
@@ -65,14 +66,16 @@ public class RoomLogic
         
         MsgDispatcher.RegisterMsg((int)ROOM.ActorAdd, OnActorAdd);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
-        MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
-        MsgDispatcher.RegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
+        MsgDispatcher.RegisterMsg((int)ROOM.ActorMove, OnActorMove);
+        MsgDispatcher.RegisterMsg((int)ROOM.ActorAiState, OnActorAiState);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
-        MsgDispatcher.RegisterMsg((int)ROOM.TroopPlayAni, OnTroopPlayAni);
+        MsgDispatcher.RegisterMsg((int)ROOM.ActorPlayAni, OnActorPlayAni);
+        MsgDispatcher.RegisterMsg((int)ROOM.TryCommand, OnTryCommand);
         
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdateRes, OnUpdateRes);
+        MsgDispatcher.RegisterMsg((int)ROOM.UpdateActionPoint, OnUpdateActionPoint);
         
         MsgDispatcher.RegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.RegisterMsg((int)ROOM.FightStop, OnFightStop);
@@ -85,14 +88,16 @@ public class RoomLogic
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorAdd, OnActorAdd);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
-        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
-        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.ActorMove, OnActorMove);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.ActorAiState, OnActorAiState);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
-        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopPlayAni, OnTroopPlayAni);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.ActorPlayAni, OnActorPlayAni);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.TryCommand, OnTryCommand);
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateRes, OnUpdateRes);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateActionPoint, OnUpdateActionPoint);
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStop, OnFightStop);
@@ -286,9 +291,18 @@ public class RoomLogic
             return false;
         }
 
-        ServerRoomManager.Instance.Log(!pi.LoadBuffer(playerBytes, playerBytes.Length)
-            ? $"RoomLogic LoadPlayer Error - Player LoadBuffer Failed! - Player:{pi.Enter.Account}"
-            : $"RoomLogic LoadPlayer OK - Player:{pi.Enter.Account}");
+        bool ret = pi.LoadBuffer(playerBytes, playerBytes.Length);
+        string msg;
+        if (ret)
+        {
+            msg = $"RoomLogic LoadPlayer OK - Player:{pi.Enter.Account}";
+        }
+        else
+        {
+            msg = $"RoomLogic LoadPlayer Error - Player LoadBuffer Failed! - Player:{pi.Enter.Account}";
+        }
+
+        ServerRoomManager.Instance.Log(msg);
         return true;
     }
     
@@ -298,7 +312,7 @@ public class RoomLogic
     
     public void AddPlayerToRoom(SocketAsyncEventArgs args, long tokenId, string account)
     {
-        PlayerInfo pi = new PlayerInfo()
+        PlayerInfo pi = new PlayerInfo(args)
         {
             Enter = new PlayerEnter()
             {
@@ -314,10 +328,19 @@ public class RoomLogic
             int wood = csv.GetValueInt(1, "PlayerInit_Wood");
             int food = csv.GetValueInt(1, "PlayerInit_Food");
             int iron = csv.GetValueInt(1, "PlayerInit_Iron");
+            int actionPointMax = csv.GetValueInt(1, "MaxActionPoint");
             pi.AddWood(wood);
             pi.AddFood(food);
             pi.AddIron(iron);
+            pi.AddActionPoint(actionPointMax);
+            pi.SetActionPointMax(actionPointMax);
         }
+        
+        // 玩家进入以后,根据该玩家[离开游戏]的时间,到[现在]的时间差(秒),计算出应该恢复多少的行动点数, 一次性恢复之
+        ServerRoomManager.Instance.RestoreActionPointAfterLoading(pi);
+        // 开启协程, 开始 - [定时恢复行动点数]
+        ServerRoomManager.Instance.StartRestoreActionPointOfPlayer(pi);
+
         Players[args] = pi;
         _curPlayerCount = Players.Count;
         ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
@@ -327,6 +350,10 @@ public class RoomLogic
     {
         var pi = GetPlayerInRoom(args);
         SavePlayer(pi);
+        
+        // 停止 - [定时恢复行动点数]
+        ServerRoomManager.Instance.StopRestoreActionPointOfPlayer(pi);
+        
         if (Players.ContainsKey(args))
         {
             Players.Remove(args);
@@ -532,17 +559,17 @@ public class RoomLogic
         BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
     }
     
-    private void OnTroopMove(SocketAsyncEventArgs args, byte[] bytes)
+    private void OnActorMove(SocketAsyncEventArgs args, byte[] bytes)
     {
-        TroopMove input = TroopMove.Parser.ParseFrom(bytes);
+        ActorMove input = ActorMove.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
         if (input.CellIndexFrom == 0 || input.CellIndexTo == 0)
         {
-            Debug.LogError("OnTroopMove Fuck!!! Actor position is lost!!!");
+            Debug.LogError("OnActorMove Fuck!!! Actor position is lost!!!");
         }
-        TroopMoveReply output = new TroopMoveReply()
+        ActorMoveReply output = new ActorMoveReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
@@ -551,27 +578,32 @@ public class RoomLogic
             CellIndexTo = input.CellIndexTo,
             Ret = true,
         };
-        BroadcastMsg(ROOM_REPLY.TroopMoveReply, output.ToByteArray());
+        BroadcastMsg(ROOM_REPLY.ActorMoveReply, output.ToByteArray());
     }
 
-    private void OnTroopAiState(SocketAsyncEventArgs args, byte[] bytes)
+    private void OnActorAiState(SocketAsyncEventArgs args, byte[] bytes)
     {
-        TroopAiState input = TroopAiState.Parser.ParseFrom(bytes);
+        ActorAiState input = ActorAiState.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
         if (input.CellIndexFrom == 0)
         {
-            Debug.LogError("OnTroopAiState Fuck!!! Actor position is lost!!!");
+            Debug.LogError("OnActorAiState Fuck!!! Actor position is lost!!!");
         }
-        // 更新单元坐标
+        
+        // 更新单元Ai信息,在服务器的ActorBehaviour里保存一份
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)
         {
+            ab.AiState = input.State;
+            ab.AiTargetId = input.TargetId;
             ab.CellIndex = input.CellIndexFrom;
+            ab.AiCellIndexTo = input.CellIndexTo;
+            ab.Orientation = input.Orientation;
         }
         
-        TroopAiStateReply output = new TroopAiStateReply()
+        ActorAiStateReply output = new ActorAiStateReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
@@ -585,7 +617,7 @@ public class RoomLogic
             Ret = true,
         };
         
-        BroadcastMsg(ROOM_REPLY.TroopAiStateReply, output.ToByteArray());
+        BroadcastMsg(ROOM_REPLY.ActorAiStateReply, output.ToByteArray());
     }
 
     private void OnUpdateActorPos(SocketAsyncEventArgs args, byte[] bytes)
@@ -609,13 +641,13 @@ public class RoomLogic
         // 这个消息不用返回了
     }
 
-    private void OnTroopPlayAni(SocketAsyncEventArgs args, byte[] bytes)
+    private void OnActorPlayAni(SocketAsyncEventArgs args, byte[] bytes)
     {
-        TroopPlayAni input = TroopPlayAni.Parser.ParseFrom(bytes);
+        ActorPlayAni input = ActorPlayAni.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
-        TroopPlayAniReply output = new TroopPlayAniReply()
+        ActorPlayAniReply output = new ActorPlayAniReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
@@ -623,7 +655,85 @@ public class RoomLogic
             AiState = input.AiState,
             Ret = true,
         };
-        BroadcastMsg(ROOM_REPLY.TroopPlayAniReply, output.ToByteArray());
+        BroadcastMsg(ROOM_REPLY.ActorPlayAniReply, output.ToByteArray());
+    }
+
+    private void OnTryCommand(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        TryCommand input = TryCommand.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        PlayerInfo pi = GetPlayerInRoom(args);
+        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        {
+            string msg = "在服务器没有找到本玩家!";
+            TryCommandReply output = new TryCommandReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                Ret = false,
+                ErrMsg = msg,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.TryCommandReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log("RoomLogic OnTryCommand Error - " + msg);
+            return;
+        }
+        
+        var csv = CsvDataManager.Instance.GetTable("command_id");
+        int actionPointCost = csv.GetValueInt(input.CommandId, "ActionPointCost");
+        if (actionPointCost > 0)
+        {
+            bool ret = true;
+            string msg = "";
+            if (actionPointCost != input.ActionPointCost)
+            { // 服务器校验一下
+                msg = $"行动点数服务器与客户端不一致! ({input.ActionPointCost} : {actionPointCost})";
+                ret = false;
+            }
+
+            if (pi.ActionPoint < input.ActionPointCost)
+            {
+                msg = "行动点不足, 请稍后再试!";
+                ret = false;
+            }
+
+            if(!ret)
+            {
+                TryCommandReply output = new TryCommandReply()
+                {
+                    RoomId = input.RoomId,
+                    OwnerId = input.OwnerId,
+                    Ret = false,
+                    ErrMsg = msg,
+                };
+                ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.TryCommandReply, output.ToByteArray());
+                ServerRoomManager.Instance.Log("RoomLogic OnTryCommand Error - " + msg);
+                return;
+            }
+            // 扣除行动点数
+            pi.AddActionPoint(-input.ActionPointCost);
+        }
+
+        {
+            // 行动点发生变化,要通知客户端
+            UpdateActionPointReply output = new UpdateActionPointReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActionPoint = pi.ActionPoint,
+                ActionPointMax = pi.ActionPointMax,
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateActionPointReply, output.ToByteArray());
+            TryCommandReply output2 = new TryCommandReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.TryCommandReply, output2.ToByteArray());
+            ServerRoomManager.Instance.Log($"RoomLogic OnTryCommand OK - Permission granted! - CommandId");
+        }
     }
     
     #endregion
@@ -743,6 +853,28 @@ public class RoomLogic
             Iron = pi.Iron,
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateResReply, output.ToByteArray());
+    }
+
+    private void OnUpdateActionPoint(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        UpdateActionPoint input = UpdateActionPoint.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        PlayerInfo pi = GetPlayerInRoom(args);
+        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        {
+            ServerRoomManager.Instance.Log($"RoomLogic OnUpdateActionPoint Error - player not found!{input.OwnerId}");
+            return;
+        }
+        UpdateActionPointReply output = new UpdateActionPointReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            Ret = true,
+            ActionPoint = pi.ActionPoint,
+            ActionPointMax = pi.ActionPointMax,
+        };
+        ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateActionPointReply, output.ToByteArray());
     }
     
     #endregion

@@ -96,7 +96,7 @@ public class RoomMsgReply
     private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
-        PlayerInfo pi = new PlayerInfo()
+        PlayerInfo pi = new PlayerInfo(_args)
         {
             Enter = input,
         };
@@ -581,6 +581,21 @@ public class RoomMsgReply
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
+            // 更新AI状态
+            ActorAiStateReply output2 = new ActorAiStateReply()
+            {
+                RoomId = ab.RoomId,
+                OwnerId = ab.OwnerId,
+                ActorId = ab.ActorId,
+                State = ab.AiState,
+                TargetId = ab.AiTargetId,
+                CellIndexFrom = ab.CellIndex,
+                CellIndexTo = ab.AiCellIndexTo,
+                Orientation = ab.Orientation,
+                Speed = ab.Speed,
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAiStateReply, output2.ToByteArray());
         }
 
         {
