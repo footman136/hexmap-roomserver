@@ -576,6 +576,7 @@ public class RoomMsgReply
                 AttackDuration = ab.AttackDuration,
                 AttackInterval = ab.AttackInterval,
                 AmmoBase = ab.AmmoBase,
+                AmmoBaseMax = ab.AmmoBaseMax,
                 
                 Ret = true,
             };

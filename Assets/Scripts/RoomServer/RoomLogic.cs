@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Sockets;
 using GameUtils;
 using Google.Protobuf;
@@ -67,6 +68,7 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.RegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
+        MsgDispatcher.RegisterMsg((int)ROOM.TroopPlayAni, OnTroopPlayAni);
         
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.RegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
@@ -74,7 +76,6 @@ public class RoomLogic
         
         MsgDispatcher.RegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.RegisterMsg((int)ROOM.FightStop, OnFightStop);
-        
     }
 
     public void RemoveListener()
@@ -87,6 +88,7 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopMove, OnTroopMove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TroopAiState, OnTroopAiState);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.TroopPlayAni, OnTroopPlayAni);
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStart, OnHarvestStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.HarvestStop, OnHarvestStop);
@@ -246,7 +248,7 @@ public class RoomLogic
             return;
         }
 
-        ServerRoomManager.Instance.Log(!ActorManager.LoadBuffer(actorBytes, actorBytes.Length)
+        ServerRoomManager.Instance.Log(!ActorManager.LoadBuffer(actorBytes, actorBytes.Length, this)
             ? "RoomLogic LoadActor Error - Actor LoadBuffer Failed!"
             : $"RoomLogic LoadActor OK - 单元个数：{ActorManager.AllActors.Count}");
     }
@@ -477,9 +479,8 @@ public class RoomLogic
                 Species = input.Species,
                 ActorInfoId = input.ActorInfoId,
             };
-            ab.LoadFromTable(out ab.Name, out ab.Hp, out ab.HpMax, out ab.AttackPower, out ab.DefencePower, 
-                out ab.Speed, out ab.FieldOfVision, out ab.ShootingRange);
-            ActorManager.AddActor(ab);
+            ab.LoadFromTable();
+            ActorManager.AddActor(ab, this);
             
             // 转发给房间内的所有玩家
             ActorAddReply output = new ActorAddReply()
@@ -506,6 +507,7 @@ public class RoomLogic
                 AttackDuration = ab.AttackDuration,
                 AttackInterval = ab.AttackInterval,
                 AmmoBase = ab.AmmoBase,
+                AmmoBaseMax = ab.AmmoBaseMax,
                 
                 Ret = true,
             };
@@ -605,6 +607,23 @@ public class RoomLogic
         }
         
         // 这个消息不用返回了
+    }
+
+    private void OnTroopPlayAni(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        TroopPlayAni input = TroopPlayAni.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        
+        TroopPlayAniReply output = new TroopPlayAniReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            AiState = input.AiState,
+            Ret = true,
+        };
+        BroadcastMsg(ROOM_REPLY.TroopPlayAniReply, output.ToByteArray());
     }
     
     #endregion
@@ -736,31 +755,72 @@ public class RoomLogic
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
-        FightStartReply output = new FightStartReply()
+        var attacker = ActorManager.GetActor(input.ActorId);
+        if (attacker == null)
         {
-            RoomId = input.RoomId,
-            OwnerId = input.OwnerId,
-            ActorId = input.ActorId,
-            TargetId = input.TargetId,
-            SkillId = input.SkillId,
-            Ret = true,
-        };
-        // 广播
-        BroadcastMsg(ROOM_REPLY.FightStartReply, output.ToByteArray());
+            FightStartReply output = new FightStartReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                Ret = false,
+                ErrMsg = "Attacker not found!",
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStartReply, output.ToByteArray());
+            return;
+        }
+        
+        if (attacker.AmmoBase <= 0)
+        { // 3.1-弹药基数不足, 无法攻击
+            attacker.AmmoBase = 0;
+            FightStartReply output = new FightStartReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                Ret = false,
+                ErrMsg = "弹药基数不足, 无法攻击!",
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStartReply, output.ToByteArray());
+            return;
+        }
+
+        {
+            FightStartReply output = new FightStartReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                TargetId = input.TargetId,
+                SkillId = input.SkillId,
+                Ret = true,
+            };
+            // 广播
+            BroadcastMsg(ROOM_REPLY.FightStartReply, output.ToByteArray());
+        }
     }
 
+    /// <summary>
+    /// 注意,因为这条消息里有删除Actor的操作,所以不能放在ActorBehaviour里去响应,除非找到更好的方法.Nov.15.2019. Liu Gang.
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="bytes"></param>
     private void OnFightStop(SocketAsyncEventArgs args, byte[] bytes)
     {
         FightStop input = FightStop.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
+        /////////////////
         // 1-攻击者
         var attacker = ActorManager.GetActor(input.ActorId);
         if (attacker == null)
         {
             FightStopReply output = new FightStopReply()
             {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
                 Ret = false,
                 ErrMsg = "Attacker not found!",
             };
@@ -774,6 +834,9 @@ public class RoomLogic
         {
             FightStopReply output = new FightStopReply()
             {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
                 Ret = false,
                 ErrMsg = "Defender not found!",
             };
@@ -781,11 +844,35 @@ public class RoomLogic
             return;
         }
         
-        // 3-战斗计算 - 减法公式
+        // 3-计算弹药基数
+        bool isFightAgain = false;
+        if (attacker.AmmoBase <= 0)
+        { // 3.1-弹药基数不足, 无法攻击
+            attacker.AmmoBase = 0;
+            FightStopReply output = new FightStopReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                Ret = false,
+                ErrMsg = "弹药基数不足, 无法攻击!",
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
+            return;
+        }
+        else
+        {
+            attacker.AmmoBase--;
+            if (attacker.AmmoBase > 0)
+                isFightAgain = true;
+        }
+        
+        // 4-战斗计算 - 减法公式
         int damage = (int)Mathf.CeilToInt(attacker.AttackPower - defender.DefencePower);
         if (damage == 0)
             damage = 1;
         defender.Hp = defender.Hp - damage;
+        
         
         // 5-如果已经死亡
         bool isEnemyDead = false;
@@ -793,20 +880,35 @@ public class RoomLogic
         {
             defender.Hp = 0;
             isEnemyDead = true;
+            isFightAgain = false;
         }
 
-        {// 8-血量, 群发
+        /////////////////
+        {// 10-血量, 群发, 挨打者
             UpdateActorInfoReply output = new UpdateActorInfoReply()
             {
                 RoomId = defender.RoomId,
                 OwnerId = defender.OwnerId,
                 ActorId = defender.ActorId,
                 Hp = defender.Hp,
+                AmmoBase = defender.AmmoBase,
                 Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.UpdateActorInfoReply, output.ToByteArray());
         }
-        {// 9-飙血, 群发
+        {// 11-弹药基数, 群发, 攻击者
+            UpdateActorInfoReply output = new UpdateActorInfoReply()
+            {
+                RoomId = attacker.RoomId,
+                OwnerId = attacker.OwnerId,
+                ActorId = attacker.ActorId,
+                Hp = attacker.Hp,
+                AmmoBase = attacker.AmmoBase,
+                Ret = true,
+            };
+            BroadcastMsg(ROOM_REPLY.UpdateActorInfoReply, output.ToByteArray());
+        }
+        {// 12-飙血, 群发
             SprayBloodReply output = new SprayBloodReply()
             {
                 RoomId = defender.RoomId,
@@ -816,8 +918,11 @@ public class RoomLogic
                 Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.SprayBloodReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log($"飙血 - {defender.ActorId}");
         }
-        {// 10-本次攻击结束
+        
+        /////////////////
+        {// 20-本次攻击结束
             FightStopReply output = new FightStopReply()
             {
                 RoomId = input.RoomId,
@@ -825,14 +930,14 @@ public class RoomLogic
                 ActorId = input.ActorId,
                 TargetId = input.TargetId,
                 IsEnemyDead = isEnemyDead,
+                FightAgain = isFightAgain,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
         }
 
-        // 临时调试,打一下,就死亡
-        //if(isEnemyDead)
-        {// 11-挨打者死了, 发送删除单位的消息
+        if(isEnemyDead)
+        {// 21-挨打者死了, 发送删除单位的消息
             ActorRemoveReply output = new ActorRemoveReply()
             {
                 RoomId = defender.RoomId,
@@ -846,6 +951,6 @@ public class RoomLogic
         }
     }
     
-    
     #endregion
+    
 }

@@ -65,9 +65,12 @@ namespace GameUtils
                 Array.Copy(bytes, 4, recvData, 0, size - 4);
                 
                 var funcList = _msgHandlers[msgId];
-                foreach (var func in funcList)
+                if (funcList != null)
                 {
-                    func?.Invoke(args, recvData);
+                    foreach (var func in funcList)
+                    {
+                        func?.Invoke(args, recvData);
+                    }
                 }
             }
         }

@@ -12,10 +12,10 @@ namespace AI
     {
         public Dictionary<long, ActorBehaviour> AllActors = new Dictionary<long, ActorBehaviour>();
 
-        public void AddActor(ActorBehaviour ab)
+        public void AddActor(ActorBehaviour ab, RoomLogic roomLogic)
         {
             AllActors[ab.ActorId] = ab;
-            ab.Init();
+            ab.Init(roomLogic);
         }
 
         public bool RemoveActor(long actorId)
@@ -30,7 +30,7 @@ namespace AI
 
             return false;
         }
-
+        
         public ActorBehaviour GetActor(long actorId)
         {
             return AllActors.ContainsKey(actorId) ? AllActors[actorId] : null;
@@ -48,7 +48,7 @@ namespace AI
         {
             MemoryStream ms = new MemoryStream();
             BinaryWriter bw = new BinaryWriter(ms);
-            int version = 2;
+            int version = 3;
             bw.Write(version);
             Dictionary<long, ActorBehaviour> newAllActors = new Dictionary<long, ActorBehaviour>();
             foreach (var keyValue in AllActors)
@@ -72,7 +72,7 @@ namespace AI
             return ms.GetBuffer();
         }
 
-        public bool LoadBuffer(byte[] bytes, int size)
+        public bool LoadBuffer(byte[] bytes, int size, RoomLogic roomLogic)
         {
             MemoryStream ms = new MemoryStream(bytes);
             BinaryReader br = new BinaryReader(ms);
@@ -101,7 +101,7 @@ namespace AI
                     Debug.LogError("ActorManager LoadBuffer Error - CellIndex is lost!!!");
                     continue;
                 }
-                AddActor(ab);
+                AddActor(ab, roomLogic);
             }
             ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");
     

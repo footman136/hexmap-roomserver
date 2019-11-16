@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using GameUtils;
+using Google.Protobuf;
 using JetBrains.Annotations;
 using Protobuf.Lobby;
 using Protobuf.Room;
 using UnityEngine;
+using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 namespace AI
@@ -42,6 +44,7 @@ namespace AI
         public float AttackDuration; // 攻击持续时间
         public float AttackInterval; // 攻击间隔
         public int AmmoBase; // 弹药基数
+        public int AmmoBaseMax; // 最大弹药基数
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -52,6 +55,8 @@ namespace AI
         private float _distance;
         private float TIME_DELAY;
 
+        private RoomLogic _roomLogic;
+        
         //If true, AI changes to this animal will be logged in the console.
         private bool _logChanges = false;
         
@@ -65,11 +70,14 @@ namespace AI
             StateMachine = new StateMachineActor(this);
         }
 
-        public void Init()
+        public void Init(RoomLogic roomLogic)
         {
+            _roomLogic = roomLogic;
+            MsgDispatcher.RegisterMsg((int)ROOM.AmmoSupply, OnAmmoSupply);
         }
         public void Fini()
         {
+            MsgDispatcher.UnRegisterMsg((int)ROOM.AmmoSupply, OnAmmoSupply);
         }
 
 
@@ -102,36 +110,28 @@ namespace AI
         
         #region 存盘
 
-        public void LoadFromTable(out string name, out int hp, out int hpMax, out float attackPower, out float defencePower,
-            out float speed, out float fieldOfVision, out float shootingRange)
+        public void LoadFromTable()
         {
             var csv = CsvDataManager.Instance.GetTable("actor_info");
             if (csv == null)
             {
                 Debug.LogError($"ActorBehaviour LoadFromTable Error - table not found:actor_info");
-                name = "";
-                hp = 0;
-                hpMax = 0;
-                attackPower = 0;
-                defencePower = 0;
-                speed = 0;
-                fieldOfVision = 0;
-                shootingRange = 0;
                 return;
             }
 
-            name = csv.GetValue(ActorInfoId, "Name");
-            hp = csv.GetValueInt(ActorInfoId, "Hp");
-            hpMax = csv.GetValueInt(ActorInfoId, "Hp");
-            attackPower = csv.GetValueFloat(ActorInfoId, "AttackPower");
-            defencePower = csv.GetValueFloat(ActorInfoId, "DefencePower");
-            speed = csv.GetValueFloat(ActorInfoId, "Speed");
-            fieldOfVision = csv.GetValueFloat(ActorInfoId, "FieldOfVision");
-            shootingRange = csv.GetValueFloat(ActorInfoId, "ShootingRange");
+            Name = csv.GetValue(ActorInfoId, "Name");
+            Hp = csv.GetValueInt(ActorInfoId, "Hp");
+            HpMax = csv.GetValueInt(ActorInfoId, "Hp");
+            AttackPower = csv.GetValueFloat(ActorInfoId, "AttackPower");
+            DefencePower = csv.GetValueFloat(ActorInfoId, "DefencePower");
+            Speed = csv.GetValueFloat(ActorInfoId, "Speed");
+            FieldOfVision = csv.GetValueFloat(ActorInfoId, "FieldOfVision");
+            ShootingRange = csv.GetValueFloat(ActorInfoId, "ShootingRange");
             
             AttackDuration = csv.GetValueFloat(ActorInfoId, "AttackDuration");
             AttackInterval = csv.GetValueFloat(ActorInfoId, "AttackInterval");
             AmmoBase = csv.GetValueInt(ActorInfoId, "AmmoBase");
+            AmmoBaseMax = csv.GetValueInt(ActorInfoId, "AmmoBase");
         }
     
         public void SaveBuffer(BinaryWriter bw)
@@ -158,6 +158,7 @@ namespace AI
             bw.Write(AttackDuration);
             bw.Write(AttackInterval);
             bw.Write(AmmoBase);
+            bw.Write(AmmoBaseMax);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -174,23 +175,49 @@ namespace AI
 
             Name = br.ReadString();
             Hp = br.ReadInt32();
-            if(header >= 2)
-                HpMax = br.ReadInt32();
+            HpMax = br.ReadInt32();
             AttackPower = br.ReadSingle();
             DefencePower = br.ReadSingle();
             Speed = br.ReadSingle();
             FieldOfVision = br.ReadSingle();
             ShootingRange = br.ReadSingle();
 
-            if (header >= 2)
-            {
-                AttackDuration = br.ReadSingle();
-                AttackInterval = br.ReadSingle();
-                AmmoBase = br.ReadInt32();
-            }
+            AttackDuration = br.ReadSingle();
+            AttackInterval = br.ReadSingle();
+            AmmoBase = br.ReadInt32();
+            AmmoBaseMax = AmmoBase;
+            AmmoBaseMax = br.ReadInt32();
         }
         
         #endregion
+    
+    #region 补充弹药
+
+    private void OnAmmoSupply(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        AmmoSupply input = AmmoSupply.Parser.ParseFrom(bytes);
+        if (input.ActorId != ActorId)
+            return; // 不是自己，略过
+
+        AmmoBase = input.AmmoBase;
+        if (AmmoBase > AmmoBaseMax)
+        {
+            ServerRoomManager.Instance.Log($"ActorBehaviour OnAmmoSupply Error - 弹药基数出现异常:{AmmoBase}/{AmmoBaseMax}");
+            AmmoBase = AmmoBaseMax;
+        }
+        
+        AmmoSupplyReply output = new AmmoSupplyReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            AmmoBase = input.AmmoBase,
+            Ret = true,
+        };
+        _roomLogic.BroadcastMsg(ROOM_REPLY.AmmoSupplyReply, output.ToByteArray());
+    }
+    
+    #endregion
         
         #region AI - 第一层
         IEnumerator Running()
