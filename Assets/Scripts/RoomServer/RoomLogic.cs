@@ -334,7 +334,7 @@ public class RoomLogic
         }
         
         // 玩家进入以后,根据该玩家[离开游戏]的时间,到[现在]的时间差(秒),计算出应该恢复多少的行动点数, 一次性恢复之
-        ServerRoomManager.Instance.RestoreActionPointAfterLoading(pi);
+        pi.RestoreActionPointAfterLoading();
 
         PlayersInRoom[args] = pi;
         _curPlayerCount = PlayersInRoom.Count;
@@ -724,7 +724,7 @@ public class RoomLogic
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.TryCommandReply, output2.ToByteArray());
-            ServerRoomManager.Instance.Log($"RoomLogic OnTryCommand OK - Permission granted! - CommandId");
+            ServerRoomManager.Instance.Log($"RoomLogic OnTryCommand OK - Permission granted! - CommandId:{input.CommandId} - ActionPointCost:{input.ActionPointCost}");
         }
     }
     

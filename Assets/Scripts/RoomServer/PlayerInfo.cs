@@ -30,8 +30,8 @@ namespace Actor
         public int ActionPoint => _actionPoint;
         public int ActionPointMax => _actionPointMax;
 
-        private const int _ACTION_POINT_INTERVAL = 60; // 恢复行动点的时间间隔
-        private const int _ACTION_POINT_ADD = 1; // 每次恢复几点行动点
+        private const int _ACTION_POINT_INTERVAL = 600; // 恢复行动点的时间间隔
+        private const int _ACTION_POINT_ADD = 5; // 每次恢复几点行动点
 
         #region 初始化
 
@@ -40,7 +40,7 @@ namespace Actor
             IsReady = false;
             Args = args;
         }
-        
+
         #endregion
         
         #region 资源
@@ -111,7 +111,7 @@ namespace Actor
             bw.Write(Enter.Account);
             bw.Write(Enter.TokenId);
             bw.Write(DateTime.Now.ToFileTime());
-            bw.Write(TimeSinceLastRestoreActionPoint);
+            bw.Write(timeNow); // 距离上次[定时恢复行动点数]的时间差(秒)
             
             bw.Write(_wood);
             bw.Write(_food);
@@ -119,7 +119,8 @@ namespace Actor
             bw.Write(_actionPoint);
             bw.Write(_actionPointMax);
 
-            ServerRoomManager.Instance.Log($"PlayerInfo SaveBuffer OK - Player:{Enter.Account}");
+            long timeS = DateTime.Now.ToFileTime() / 10000000;
+            ServerRoomManager.Instance.Log($"PlayerInfo SaveBuffer OK - Player:{Enter.Account} - SaveTime:{timeS}");
             return ms.GetBuffer();
         }
         
@@ -146,7 +147,7 @@ namespace Actor
         
         #endregion
         
-        #region Tick
+        #region Tick&行动点
 
         private float timeNow; 
         /// <summary>
@@ -163,6 +164,30 @@ namespace Actor
             }
         }
         
+        /// <summary>
+        /// 根据玩家[离开游戏]的时间,到[现在]的时间差(秒), 计算出应该给这个玩家恢复多少行动点数
+        /// </summary>
+        /// <param name="pi">当前这个玩家</param>
+        /// <param name="timeSpan">上次存盘到这次取盘之间经过的时间(秒)</param>
+        public void RestoreActionPointAfterLoading()
+        {
+            // 计算[上次存盘]到[这次取盘]之间的时间差,还应该加上上次存盘时,距离上次恢复行动点的时间
+            long timeNow = DateTime.Now.ToFileTime();
+            long timeS = DateTime.Now.ToFileTime() / 10000000;
+            long timeSpan = (timeNow - TimeSinceLastSave) / 10000000;   // 最终得到单位秒(ToFileTime是100纳秒)
+            Debug.Log($"PlayerInfo RestoreActionPointAfterLoading - [{Enter.Account}] 现在时间:{timeS} - 上次离开到现在的时间差<{timeSpan}>秒");
+            timeSpan += TimeSinceLastRestoreActionPoint;
+            int actionPointAddTimes = Mathf.FloorToInt(timeSpan / _ACTION_POINT_INTERVAL);
+            if (actionPointAddTimes > 0)
+            {
+                RestoreActionPoint(_ACTION_POINT_ADD*actionPointAddTimes);
+            }
+            // 距离上次[恢复行动点数]的时间差(秒), RestoreActionPointOfPlayer()的时候使用
+            TimeSinceLastRestoreActionPoint = Mathf.FloorToInt(timeSpan % _ACTION_POINT_INTERVAL);
+            int timeRemain = _ACTION_POINT_INTERVAL - TimeSinceLastRestoreActionPoint;
+            Debug.Log($"PlayerInfo RestoreActionPointAfterLoading - [{Enter.Account}] 第一次恢复行动点在<{timeRemain}>秒以后");
+        }
+    
         #endregion
     }
 }
