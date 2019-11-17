@@ -30,7 +30,7 @@ namespace Actor
         public int ActionPoint => _actionPoint;
         public int ActionPointMax => _actionPointMax;
 
-        private const int _ACTION_POINT_INTERVAL = 600; // 恢复行动点的时间间隔
+        private const int _ACTION_POINT_INTERVAL = 3600; // 恢复行动点的时间间隔
         private const int _ACTION_POINT_ADD = 5; // 每次恢复几点行动点
 
         #region 初始化
