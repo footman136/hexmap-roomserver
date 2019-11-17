@@ -28,12 +28,12 @@ public class RoomLogic
     public ResManager ResManager = new ResManager();
     
 
-    private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
+    private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> PlayersInRoom = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
 
     public string RoomName => _roomName;
     public long RoomId => _roomId;
     public int MaxPlayerCount => _maxPlayerCount;
-    public int CurPlayerCount => Players.Count;
+    public int CurPlayerCount => PlayersInRoom.Count;
     public long Creator => _creator;
 
     #region 初始化
@@ -310,18 +310,13 @@ public class RoomLogic
     
     #region 玩家
     
-    public void AddPlayerToRoom(SocketAsyncEventArgs args, long tokenId, string account)
+    /// <summary>
+    /// 房间里的[玩家管理器]PlayerInRoom是对整个房间服务器里的[玩家管理器]Players的引用
+    /// </summary>
+    /// <param name="args"></param>
+    /// <param name="pi"></param>
+    public void AddPlayerToRoom(SocketAsyncEventArgs args, PlayerInfo pi)
     {
-        PlayerInfo pi = new PlayerInfo(args)
-        {
-            Enter = new PlayerEnter()
-            {
-                TokenId = tokenId,
-                Account = account,
-            },
-            RoomId = _roomId,
-            IsCreatedByMe = tokenId == _creator,
-        };
         if (!LoadPlayer(pi))
         { // 如果没有存盘,则读取初始数据
             var csv = CsvDataManager.Instance.GetTable("battle_init");
@@ -332,17 +327,17 @@ public class RoomLogic
             pi.AddWood(wood);
             pi.AddFood(food);
             pi.AddIron(iron);
-            pi.AddActionPoint(actionPointMax);
             pi.SetActionPointMax(actionPointMax);
+            pi.AddActionPoint(actionPointMax);
+            pi.TimeSinceLastSave = DateTime.Now.ToFileTime();
+            pi.TimeSinceLastRestoreActionPoint = 0;
         }
         
         // 玩家进入以后,根据该玩家[离开游戏]的时间,到[现在]的时间差(秒),计算出应该恢复多少的行动点数, 一次性恢复之
         ServerRoomManager.Instance.RestoreActionPointAfterLoading(pi);
-        // 开启协程, 开始 - [定时恢复行动点数]
-        ServerRoomManager.Instance.StartRestoreActionPointOfPlayer(pi);
 
-        Players[args] = pi;
-        _curPlayerCount = Players.Count;
+        PlayersInRoom[args] = pi;
+        _curPlayerCount = PlayersInRoom.Count;
         ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
     }
 
@@ -351,26 +346,23 @@ public class RoomLogic
         var pi = GetPlayerInRoom(args);
         SavePlayer(pi);
         
-        // 停止 - [定时恢复行动点数]
-        ServerRoomManager.Instance.StopRestoreActionPointOfPlayer(pi);
-        
-        if (Players.ContainsKey(args))
+        if (PlayersInRoom.ContainsKey(args))
         {
-            Players.Remove(args);
+            PlayersInRoom.Remove(args);
         }
         else
         {
             ServerRoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
         }
-        _curPlayerCount = Players.Count;
+        _curPlayerCount = PlayersInRoom.Count;
         ServerRoomManager.Instance.Log($"RoomLogic RemovePlayer OK - 玩家离开战场! Player:{pi.Enter.Account}");
     }
 
     public PlayerInfo GetPlayerInRoom(SocketAsyncEventArgs args)
     {
-        if (Players.ContainsKey(args))
+        if (PlayersInRoom.ContainsKey(args))
         {
-            return Players[args];
+            return PlayersInRoom[args];
         }
 
         return null;
@@ -385,7 +377,7 @@ public class RoomLogic
     /// <param name="output">消息</param>
     public void BroadcastMsg(ROOM_REPLY msgId, byte[] output)
     {
-        foreach (var keyPair in Players)
+        foreach (var keyPair in PlayersInRoom)
         {
             ServerRoomManager.Instance.SendMsg(keyPair.Key, msgId, output);
         }
@@ -479,14 +471,14 @@ public class RoomLogic
         if (input.RoomId != _roomId)
             return;
 
-        if (!Players.ContainsKey(args))
+        if (!PlayersInRoom.ContainsKey(args))
         {
             ActorAddReply output = new ActorAddReply()
             {
                 Ret = false,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
-            ServerRoomManager.Instance.Log($"MSG: ActorAdd - 当前玩家不在本本战场！战场名:{RoomName} - 玩家个数:{Players.Count}");
+            ServerRoomManager.Instance.Log($"MSG: ActorAdd - 当前玩家不在本本战场！战场名:{RoomName} - 玩家个数:{PlayersInRoom.Count}");
         }
         else
         {

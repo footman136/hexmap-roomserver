@@ -3,9 +3,8 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net.Sockets;
 using Protobuf.Room;
-using UnityEditor.Experimental.Rendering;
 using UnityEngine;
-
+using Google.Protobuf;
 namespace Actor
 {
     public class PlayerInfo
@@ -17,7 +16,7 @@ namespace Actor
         public bool IsReady;
         public SocketAsyncEventArgs Args;
         public long TimeSinceLastSave; // 上次存盘的时间
-        public long TimeSpanSinceLastRestoreActionPoint; // [现在]到[上次恢复行动点]的时间差
+        public int TimeSinceLastRestoreActionPoint; // [现在]到[上次恢复行动点]的时间差
         
         private int _wood;
         private int _food;
@@ -31,13 +30,20 @@ namespace Actor
         public int ActionPoint => _actionPoint;
         public int ActionPointMax => _actionPointMax;
 
-        public Coroutine CoroutineActionPoint;
+        private const int _ACTION_POINT_INTERVAL = 60; // 恢复行动点的时间间隔
+        private const int _ACTION_POINT_ADD = 1; // 每次恢复几点行动点
+
+        #region 初始化
 
         public PlayerInfo(SocketAsyncEventArgs args)
         {
             IsReady = false;
             Args = args;
         }
+        
+        #endregion
+        
+        #region 资源
 
         public void AddWood(int amount)
         {
@@ -54,6 +60,10 @@ namespace Actor
             _iron += amount;
         }
 
+        #endregion
+        
+        #region 行动点
+        
         public void AddActionPoint(int amount)
         {
             _actionPoint += amount;
@@ -73,6 +83,25 @@ namespace Actor
             _actionPointMax = amount;
         }
         
+        public void RestoreActionPoint(int points)
+        {
+            AddActionPoint(points);
+            UpdateActionPointReply output = new UpdateActionPointReply()
+            {
+                RoomId = RoomId,
+                OwnerId = Enter.TokenId,
+                Ret = true,
+                ActionPoint = ActionPoint,
+                ActionPointMax = ActionPointMax,
+            };
+            ServerRoomManager.Instance.SendMsg(Args, ROOM_REPLY.UpdateActionPointReply, output.ToByteArray());
+            Debug.Log($"PlayerInfo restoreActionPointOneTime - [{Enter.Account}] 恢复行动点数:{_ACTION_POINT_ADD} - 现在行动点数:{ActionPoint}/{ActionPointMax}");
+        }
+
+        #endregion
+        
+        #region 存盘
+        
         public byte[] SaveBuffer()
         {
             MemoryStream ms = new MemoryStream();
@@ -82,7 +111,7 @@ namespace Actor
             bw.Write(Enter.Account);
             bw.Write(Enter.TokenId);
             bw.Write(DateTime.Now.ToFileTime());
-            bw.Write(TimeSpanSinceLastRestoreActionPoint);
+            bw.Write(TimeSinceLastRestoreActionPoint);
             
             bw.Write(_wood);
             bw.Write(_food);
@@ -101,35 +130,39 @@ namespace Actor
             int version = br.ReadInt32();
             Enter.Account = br.ReadString();
             Enter.TokenId = br.ReadInt64();
-            if (version >= 3)
-            {
-                TimeSinceLastSave = br.ReadInt64();
-                TimeSpanSinceLastRestoreActionPoint = br.ReadInt32();
-            }
-            else
-            {
-                TimeSinceLastSave = DateTime.Now.ToFileTime();
-                TimeSpanSinceLastRestoreActionPoint = 0;
-            }
+            TimeSinceLastSave = br.ReadInt64();
+            TimeSinceLastRestoreActionPoint = br.ReadInt32();
 
             _wood = br.ReadInt32();
             _food = br.ReadInt32();
             _iron = br.ReadInt32();
-            if (version >= 2)
-            {
-                _actionPoint = br.ReadInt32();
-                _actionPointMax = br.ReadInt32();
-            }
-            else
-            {
-                _actionPoint = 100;
-                _actionPointMax = 100;
-            }
+            _actionPoint = br.ReadInt32();
+            _actionPointMax = br.ReadInt32();
             
             ServerRoomManager.Instance.Log($"PlayerInfo LoadBuffer OK - Player:{Enter.Account}");
 
             return true;
         }
         
+        #endregion
+        
+        #region Tick
+
+        private float timeNow; 
+        /// <summary>
+        /// 定时被Update调用,在主线程中运行 (可能存在多线程问题, 如果代码崩溃在这里, 要注意)
+        /// </summary>
+        public void Tick()
+        {
+            timeNow += Time.deltaTime;
+            if (timeNow > TimeSinceLastRestoreActionPoint)
+            {
+                timeNow = 0;
+                TimeSinceLastRestoreActionPoint = _ACTION_POINT_INTERVAL;
+                RestoreActionPoint(_ACTION_POINT_ADD);
+            }
+        }
+        
+        #endregion
     }
 }

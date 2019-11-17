@@ -388,7 +388,7 @@ public class RoomMsgReply
             if (pi != null)
             {
                 ret = true;
-                roomLogic.AddPlayerToRoom(_args, pi.Enter.TokenId, pi.Enter.Account);
+                roomLogic.AddPlayerToRoom(_args, pi);
                 pi.RoomId = input.RoomId;
                 ServerRoomManager.Instance.SetPlayerInfo(_args, pi);
 

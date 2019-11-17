@@ -38,8 +38,11 @@ public class ServerRoomManager : MonoBehaviour
     public bool IsCheckHeartBeat;
     
     private const float _HEART_BEAT_INTERVAL = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
-    private const float _ACTION_POINT_INTERVAL = 60f; // 恢复行动点的时间间隔
+    
+    //行动点
+    private const int _ACTION_POINT_INTERVAL = 60; // 恢复行动点的时间间隔
     private const int _ACTION_POINT_ADD = 1; // 每次恢复几点行动点
+
 
     void Awake()
     {
@@ -114,6 +117,13 @@ public class ServerRoomManager : MonoBehaviour
     void Update()
     {
         UpdateName();
+        
+        // [定时恢复行动点] (会不会有多线程问题? 这里是主线程运行的)
+        foreach (var keyValue in Players)
+        {
+            var pi = keyValue.Value;
+            pi?.Tick();
+        }
     }
     
     #endregion
@@ -153,43 +163,23 @@ public class ServerRoomManager : MonoBehaviour
     #endregion
     
     #region 恢复行动点
-    
-    /// <summary>
-    /// 开始定时恢复行动点, 本函数应该在玩家进入游戏, 读取了进度滞后被调用
-    /// </summary>
-    /// <param name="pi"></param>
-    public void StartRestoreActionPointOfPlayer(PlayerInfo pi)
-    {
-        Coroutine coroutineActionPoint = StartCoroutine(RestoreActionPointOfPlayer(pi));
-        pi.CoroutineActionPoint = coroutineActionPoint;
-    }
 
-    /// <summary>
-    /// 结束定时恢复行动点, 本函数应该在玩家退出游戏前被调用
-    /// </summary>
-    /// <param name="pi"></param>
-    public void StopRestoreActionPointOfPlayer(PlayerInfo pi)
-    {
-        if (pi.CoroutineActionPoint != null)
-        {
-            StopCoroutine(pi.CoroutineActionPoint);
-            pi.CoroutineActionPoint = null;
-        }
-    }
-    
-    private IEnumerator RestoreActionPointOfPlayer(PlayerInfo pi)
+    private IEnumerator RestoreActionPointOfPlayer(SocketAsyncEventArgs args)
     {
         // 第一次等待的时间,是上次[恢复行动点数]到下次[恢复行动点数]的剩余时间
-        float timeRemain = _ACTION_POINT_INTERVAL - pi.TimeSpanSinceLastRestoreActionPoint;
+        var pi = GetPlayer(args);
+        if (pi == null) yield break;
+        float timeRemain = _ACTION_POINT_INTERVAL - pi.TimeSinceLastRestoreActionPoint;
         if ( timeRemain < 0)
         {
-            Debug.LogError($"DEBUG - ServerRoomManager UpdateActionPointOfPlayer Error - 时间计算错误!! - 上次经过时间:{pi.TimeSpanSinceLastRestoreActionPoint}");
+            Debug.LogError($"DEBUG - ServerRoomManager UpdateActionPointOfPlayer Error - [{pi.Enter.Account}] 时间计算错误!! - 上次经过时间:{pi.TimeSinceLastRestoreActionPoint}");
         }
         yield return new WaitForSeconds(timeRemain);
         while (true)
         {
+            pi = GetPlayer(args);
+            if (pi == null) yield break;
             addActionPointofPlayerOneTime(pi, _ACTION_POINT_ADD);
-            Debug.Log($"ServerRoomManager RestoreActionPointOfPlayer - 恢复行动点数:{_ACTION_POINT_ADD} - 现在行动点数:{pi.ActionPoint}/{pi.ActionPointMax}");
             // 以后每次的间隔,都是固定时间
             yield return new WaitForSeconds(_ACTION_POINT_INTERVAL);            
         }
@@ -219,14 +209,17 @@ public class ServerRoomManager : MonoBehaviour
         // 计算[上次存盘]到[这次取盘]之间的时间差,还应该加上上次存盘时,距离上次恢复行动点的时间
         long timeNow = DateTime.Now.ToFileTime();
         long timeSpan = (timeNow - pi.TimeSinceLastSave) / 1000000;   // 单位秒
-        timeSpan += pi.TimeSpanSinceLastRestoreActionPoint;
-        Debug.Log($"ServerRoomManager RestoreActionPoint - 第一次恢复行动点数在<{timeSpan}>秒以后");
+        timeSpan += pi.TimeSinceLastRestoreActionPoint;
+        Debug.Log($"ServerRoomManager RestoreActionPoint - [{pi.Enter.Account}] 上次登录到现在的时间差<{timeSpan}>秒");
         int actionPointAddTimes = Mathf.FloorToInt(timeSpan / _ACTION_POINT_INTERVAL);
         if (actionPointAddTimes > 0)
         {
-            Debug.Log($"ServerRoomManager RestoreActionPoint - 登录后一次性恢复行动点数:{_ACTION_POINT_ADD}x{actionPointAddTimes} - 现在行动点数:{pi.ActionPoint}/{pi.ActionPointMax}");
-            addActionPointofPlayerOneTime(pi, _ACTION_POINT_ADD*actionPointAddTimes);
+            pi.RestoreActionPoint(_ACTION_POINT_ADD*actionPointAddTimes);
         }
+        // 距离上次[恢复行动点数]的时间差(秒), RestoreActionPointOfPlayer()的时候使用
+        pi.TimeSinceLastRestoreActionPoint = Mathf.FloorToInt(timeSpan % _ACTION_POINT_INTERVAL);
+        int timeRemain = _ACTION_POINT_INTERVAL - pi.TimeSinceLastRestoreActionPoint;
+        Debug.Log($"ServerRoomManager RestoreActionPoint - [{pi.Enter.Account}] 第一次恢复行动点在<{timeRemain}>秒以后");
     }
     
     #endregion
@@ -397,13 +390,18 @@ public class ServerRoomManager : MonoBehaviour
             PlayerInfo pi = Players[args];
             return pi;
         }
-
-        return null;
+        else
+        {
+            return null;
+        }
     }
 
     public void SetPlayerInfo(SocketAsyncEventArgs args, PlayerInfo playerInfo)
     {
-        Players[args] = playerInfo;
+        if (Players.ContainsKey(args))
+        {
+            Players[args] = playerInfo;
+        }
     }
 
     public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
