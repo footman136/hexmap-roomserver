@@ -127,7 +127,7 @@ namespace AI
             Name = csv.GetValue(ActorInfoId, "Name");
             Hp = csv.GetValueInt(ActorInfoId, "Hp");
             HpMax = csv.GetValueInt(ActorInfoId, "Hp");
-            AttackPower = csv.GetValueFloat(ActorInfoId, "AttackPower");
+            AttackPower = csv.GetValueFloat(ActorInfoId, "AttackPower_1"); // 攻击力未来扩展为多种,实现兵种相克
             DefencePower = csv.GetValueFloat(ActorInfoId, "DefencePower");
             Speed = csv.GetValueFloat(ActorInfoId, "Speed");
             FieldOfVision = csv.GetValueFloat(ActorInfoId, "FieldOfVision");
