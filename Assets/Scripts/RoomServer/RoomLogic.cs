@@ -29,6 +29,7 @@ public class RoomLogic
     
 
     private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> PlayersInRoom = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
+    private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> AIPlayers = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
 
     public string RoomName => _roomName;
     public long RoomId => _roomId;

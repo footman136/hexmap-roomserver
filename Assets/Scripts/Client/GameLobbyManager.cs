@@ -107,9 +107,11 @@ public class GameLobbyManager : ClientScript
                 break;
             case SocketAction.Close:
                 StopHeartBeat();
-                UIManager.Instance.SystemTips(msg, PanelSystemTips.MessageType.Error);
+                //UIManager.Instance.SystemTips(msg, PanelSystemTips.MessageType.Error);
+                Debug.LogWarning(msg);
                 break;
             case SocketAction.Error:
+                Debug.LogWarning(msg);
                 break;
         }
         Debug.Log(msg);
