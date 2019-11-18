@@ -987,12 +987,15 @@ public class RoomLogic
         else
         {
             attacker.AmmoBase--;
-            if (attacker.AmmoBase > 0)
+            // 弹药充足, 并且这不是反击的情况下, 允许攻击下一轮
+            if (attacker.AmmoBase > 0 && !input.IsCounterAttack)
                 isFightAgain = true;
         }
         
         // 4-战斗计算 - 减法公式
-        int damage = (int)Mathf.CeilToInt(attacker.AttackPower - defender.DefencePower);
+        int damage = (int)Mathf.FloorToInt(attacker.AttackPower - defender.DefencePower);
+        if (input.IsCounterAttack) // 如果是反击,则仅计算60%的伤害
+            damage = Mathf.FloorToInt(damage * 0.6f);
         if (damage == 0)
             damage = 1;
         defender.Hp = defender.Hp - damage;
