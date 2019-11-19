@@ -34,11 +34,16 @@ public class ServerRoomManager : MonoBehaviour
     public int MaxPlayerPerRoom;
     public int MaxActionPoint;
     
+    // 提供给外部连接用的地址, 但不是自己启动监听时的地址. 在云服务器上, 因为时虚拟地址, 所以启动监听的地址可能仅仅是:0.0.0.0
+    // 但是这个地址, 就是给外部用来连接的地址
+    private string _addressReal;
+    public string AddressReal => _addressReal;
+
     [Space(), Header("Debug"), Space(5)]
     public bool IsCheckHeartBeat;
     
     private const float _HEART_BEAT_INTERVAL = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
-    
+
     void Awake()
     {
         if (Instance != null)
@@ -49,8 +54,14 @@ public class ServerRoomManager : MonoBehaviour
         Instance = this;
         Players = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
         Rooms = new Dictionary<long, RoomLogic>();
-        _server = GetComponent<ServerScript>();
-        _redis = GetComponent<RedisManager>();
+
+        var csv = CsvDataManager.Instance.GetTable("server_config_room");
+        if (csv != null)
+        { // 房间服务器监听地址, 按理说监听地址, 不能由外部指定, 但是对于云服务器, 是没有本地地址的, 只能外部指定
+            _server.Address = csv.GetValue(1, "RoomServerAddress");
+            _server.Port = csv.GetValueInt(1, "RoomServerPort");
+            _addressReal = csv.GetValue(1, "RoomServerAddressReal");
+        }
     }
 
     #region 初始化
