@@ -78,7 +78,7 @@ public class AsynSocketClient
             }
             catch (Exception e)
             {
-                string err = $"Exception - ConnectAsync() - ip地址格式不正确，请使用正确的ip地址！- {e}";
+                string err = $"AsynSocketClient ConnectAsync Exception - ip adress format is incorrect!- {e}"; // 地址格式不正确，请使用正确的ip地址！
                 OnComplete(tcpClient, SocketAction.Error, err);
             }
             try
@@ -94,7 +94,7 @@ public class AsynSocketClient
             }
             catch (Exception e)
             {
-                string err = $"Exception - ConnectAsync() - {e}";
+                string err = $"AsynSocketClient ConnectAsync Exception - {e}";
                 OnComplete(tcpClient, SocketAction.Error, err);
             }           
         }
@@ -116,7 +116,7 @@ public class AsynSocketClient
             }
             catch (Exception e)
             {
-                string err = $"Exception - ConnectCallBack() - {e}";
+                string err = $"AsynSocketClient ConnectCallBack - Exception - {e}";
                 OnComplete(client, SocketAction.Error, err);
             }           
         }
@@ -158,7 +158,7 @@ public class AsynSocketClient
             {
                 //如果发生异常，说明客户端失去连接，触发关闭事件
                 Stop();
-                string err = $"Exception - ReceiveCallBack() - {ex}";
+                string err = $"AsynSocketClient ReceiveCallBack Exception (EndReceive) - {ex}";
                 OnComplete(state.TcpClient, SocketAction.Close, err);
             }
 
@@ -219,7 +219,7 @@ public class AsynSocketClient
             catch (Exception ex)
             {
                 //如果发生异常，说明客户端失去连接，触发关闭事件
-                string err = $"Exception - ReceiveCallBack() - {ex}";
+                string err = $"AsynSocketClient ReceiveCallBack Exception (2) - {ex}";
                 OnComplete(state.TcpClient, SocketAction.Error, err);
             }
 
@@ -329,6 +329,10 @@ public class AsynSocketClient
         #region OnComoplete
         public virtual void OnComplete(TcpClient client, SocketAction action, string msg)
         {
+            if (Completed == null)
+            {
+                Log("AsynSocketClient OnComplete Error - Completed() function not found!");
+            }
             Completed?.Invoke(client, action, msg);
             if (action == SocketAction.Connect)
             {
@@ -340,12 +344,13 @@ public class AsynSocketClient
                         try
                         {
                             ReceiveAsync();
+                            Log("AsynsocketClient OnComplete connect - "+msg);
                             //Thread.Sleep(20);
                         }
                         catch (Exception ex)
                         {
                             Stop();
-                            string err = $"Exception - OnComplete() - {ex}";
+                            string err = $"AsynsocketClient OnComplete Exception (Connect) - {ex}";
                             OnComplete(client, SocketAction.Error, err);
                         }
                     }
@@ -361,13 +366,13 @@ public class AsynSocketClient
             {
                 try
                 {
-                    Log("socket closed.");
+                    Log("Socket closed.");
                     this.Received = null;
                     tcpClient.Close();
                 }
                 catch(Exception e)
                 {
-                    string err = $"Exception - OnComplete() - {e}";
+                    string err = $"AsynsocketClient OnComplete Exception (Close) - {e}";
                     OnComplete(client, SocketAction.Error, err);
                 }
             }

@@ -24,10 +24,7 @@ public class ClientScript : MonoBehaviour
 
     protected void Start()
     {
-        Debug.Log($"Begin connecting server - {_address}:{_port} ...");
-        
         _client = new AsynSocketClient(BUFF_SIZE);
-        _client.ConnectAsync(_address, _port);
         _client.Received += OnReceiveMsg;
         _client.Completed += OnComplete;
 
@@ -37,6 +34,7 @@ public class ClientScript : MonoBehaviour
             _recvMsgList = new List<byte[]>();
             _socketEventList = new List<SocketEvent>();
         }
+        Log("Client started!");
     }
 
     void OnDestroy()
@@ -75,6 +73,12 @@ public class ClientScript : MonoBehaviour
     public void Log(string msg)
     {
         _client.Log(msg);
+    }
+
+    public void Connect()
+    {
+        Log($"Begin connecting server - {_address}:{_port} ...");
+        _client.ConnectAsync(_address, _port);
     }
 
     public void SendMsg(byte[] data)

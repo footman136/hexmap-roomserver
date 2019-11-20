@@ -31,6 +31,9 @@ namespace Main
             // 读取数据表
             CsvDataManager = gameObject.AddComponent<CsvDataManager>();
             CsvDataManager.LoadDataAll();
+            
+            // 限制帧速率
+            Application.targetFrameRate = 30;
         }
 
         // Start is called before the first frame update

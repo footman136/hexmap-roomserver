@@ -30,18 +30,15 @@ public class GameLobbyManager : ClientScript
 
         Completed += OnComplete;
         Received += OnReceiveMsg;
+        
+        Log($"GameLobbyManager.Start()! Start Connect to LobbyServer - {_address}:{_port}"); //开始链接LobbyServer
+        Connect();
     }
 
     void OnDestroy()
     {
         Completed -= OnComplete;
         Received -= OnReceiveMsg;
-    }
-
-    // Update is called once per frame
-    protected void Update()
-    {
-        base.Update();
     }
 
     #region 心跳
@@ -86,6 +83,7 @@ public class GameLobbyManager : ClientScript
         {
             case SocketAction.Connect:
             {
+                Log("GameLobbyManager OnComplete - Connected!");
                 UIManager.Instance.SystemTips(msg, PanelSystemTips.MessageType.Success);
                 // RoomServer向LobbyServer发送第一条消息，登录该RoomServer
                 RoomServerLogin data = new RoomServerLogin()
