@@ -43,11 +43,11 @@ public class LobbyMsgReply
         if (input.Ret)
         {
             MixedManager.Instance.StateMachine.TriggerTransition(ConnectionFSMStateEnum.StateEnum.CONNECTED);
-            MixedManager.Instance.LobbyManager.Log("MSG: 房间服务器登录成功！");
+            MixedManager.Instance.LobbyManager.Log("MSG: LobbyMsgReply ROOM_SERVER_LOGIN_REPLY OK - Room-server logged in succeeded!"); // 房间服务器登录成功！
         }
         else
         {
-            MixedManager.Instance.LobbyManager.Log("MSG: 房间服务器登录失败！");
+            MixedManager.Instance.LobbyManager.Log("MSG: LobbyMsgReply ROOM_SERVER_LOGIN_REPLY Error - Room-server logged in failed"); // 房间服务器登录失败！
         }
     }
 
@@ -56,7 +56,7 @@ public class LobbyMsgReply
         UpdateRoomInfoReply input = UpdateRoomInfoReply.Parser.ParseFrom(bytes);
         if (!input.Ret)
         {
-            MixedManager.Instance.LobbyManager.Log("MSG: 更新房间信息失败！");
+            MixedManager.Instance.LobbyManager.Log("MSG: LobbyMsgReply UPDATE_ROOM_INFO_REPLY Error - Update room information failed!"); // 更新房间信息失败！
         }
     }
 }

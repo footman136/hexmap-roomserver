@@ -12,7 +12,7 @@ using Protobuf.Lobby;
 
 public class GameLobbyManager : ClientScript
 {
-    private const float _heartBeatInterval = 15f; // 心跳间隔(秒)
+    private const float _HEART_BEAT_INTERVAL = 15f; // 心跳间隔(秒)
     
     // Start is called before the first frame update
     void Start()
@@ -45,7 +45,7 @@ public class GameLobbyManager : ClientScript
     
     private void StartHeartBeat()
     {
-        InvokeRepeating(nameof(HeartBeat), 0, _heartBeatInterval);
+        InvokeRepeating(nameof(HeartBeat), 0, _HEART_BEAT_INTERVAL);
     }
 
     private void StopHeartBeat()
@@ -98,6 +98,7 @@ public class GameLobbyManager : ClientScript
                 };
                 SendMsg(LOBBY.RoomServerLogin, data.ToByteArray());
                 StartHeartBeat();
+                Debug.Log(msg);
             }
                 break;
             case SocketAction.Send:
@@ -113,7 +114,6 @@ public class GameLobbyManager : ClientScript
                 Debug.LogWarning(msg);
                 break;
         }
-        Debug.Log(msg);
     }
     
     private void OnReceiveMsg(byte[] data)

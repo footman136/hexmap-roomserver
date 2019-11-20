@@ -121,7 +121,7 @@ public class RoomMsgReply
                 };
                 ServerRoomManager.Instance.SendMsg(alreadyLoggedIn, ROOM_REPLY.LeaveRoomReply, output.ToByteArray());
                 ServerRoomManager.Instance.RemovePlayer(alreadyLoggedIn, true);
-                string msg = "踢掉之前登录的本用户.";
+                string msg = "Kick myself that priviously logged in."; // "踢掉之前登录的本用户.";
                 ServerRoomManager.Instance.Log($"MSG: PLAYER_ENTER WARNING - " + msg + $" - {oldPlayer.Enter.Account}");
             }
         }
@@ -154,7 +154,7 @@ public class RoomMsgReply
         if (input.PackageIndex == 0)
         {// 第一条此类消息
             mapDataBuffers.Clear();
-            ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP - 开始上传地图数据！地图名{input.RoomName}");
+            ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP - Begin upload map data! MapName:{input.RoomName}"); // 开始上传地图数据！地图名
         }
         mapDataBuffers.Add(input.MapData.ToByteArray());
         
@@ -182,7 +182,7 @@ public class RoomMsgReply
             PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
             if (pi == null)
             {
-                ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP - 保存地图数据失败！创建者没有找到！地图名{input.RoomName}");
+                ServerRoomManager.Instance.Log($"MSG：UPLOAD_MAP Error - Save map data failed! Creator not found! MapName:{input.RoomName}"); // 保存地图数据失败！创建者没有找到！地图名
                 ret = false;
             }
             else
@@ -197,7 +197,7 @@ public class RoomMsgReply
                 ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "MapDataSize", totalSize);
                 ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, "CreateTime", DateTime.Now);
 
-                ServerRoomManager.Instance.Log($"MSG: UPLOAD_MAP - 上传地图数据，并保存到Redis成功！地图名:{input.RoomName} - Total Size:{totalSize}");
+                ServerRoomManager.Instance.Log($"MSG: UPLOAD_MAP OK - Upload map data and save to redis succeeded! MapName:{input.RoomName} - Total Size:{totalSize}"); // 上传地图数据，并保存到Redis成功！地图名
             }
             
         }
@@ -217,7 +217,7 @@ public class RoomMsgReply
         string tableName = $"MAP:{input.RoomId}";
         if (!ServerRoomManager.Instance.Redis.CSRedis.Exists(tableName))
         {
-            string msg = $"Redis中没有找到地图表格 - {tableName}";
+            string msg = $"Cannot find the table - {tableName}"; // Redis中没有找到地图表格
             ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
@@ -233,7 +233,7 @@ public class RoomMsgReply
         long roomId = ServerRoomManager.Instance.Redis.CSRedis.HGet<long>(tableName, "RoomId");
         if (roomId != input.RoomId)
         {
-            string msg = $"从Redis中读取地图数据失败！roomId不匹配！传来的RoomId:{input.RoomId} - Redis中保存的RoomId:{roomId}";
+            string msg = $"Read map data from redis failed! RoomId is not matched! RoomId from client:{input.RoomId} - RoomId from Redis:{roomId}"; // 从Redis中读取地图数据失败！roomId不匹配！传来的RoomId // Redis中保存的RoomId
             ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
@@ -250,7 +250,7 @@ public class RoomMsgReply
         PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
         if (pi == null)
         {
-            string msg = $"从Redis中读取地图数据失败！我自己并没有在战场服务器！地图名:{roomName} - RoomId:{roomId}";
+            string msg = $"Read map data from redis failed! Player is not found! MapName:{roomName} - RoomId:{roomId}"; // 从Redis中读取地图数据失败！我自己并没有在战场服务器！地图名
             ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
@@ -277,7 +277,7 @@ public class RoomMsgReply
         var roomLogic = ServerRoomManager.Instance.GetRoomLogic(roomId);
         if (roomLogic == null)
         {
-            string msg = ($"该战场尚未创建或者已经被销毁！地图名:{roomName} - RoomId:{roomId}");
+            string msg = ($"The Battlefield is not created or has been disposed! MapName:{roomName} - RoomId:{roomId}"); // 该战场尚未创建或者已经被销毁！地图名
             ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
@@ -289,7 +289,7 @@ public class RoomMsgReply
         }
         if (!roomLogic.SetMap(totalData))
         {
-            string msg = ($"地图数据不合法，可能已经被损坏！地图名:{roomName} - RoomId:{roomId}");
+            string msg = ($"Map data is not valid, can be currupted! MapName:{roomName} - RoomId:{roomId}"); // 地图数据不合法，可能已经被损坏！地图名
             ServerRoomManager.Instance.Log("MSG：DOWNLOAD_MAP - " + msg);
             DownloadMapReply output = new DownloadMapReply()
             {
@@ -345,7 +345,7 @@ public class RoomMsgReply
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadMapReply, output.ToByteArray());
         }
         
-        ServerRoomManager.Instance.Log($"MSG：DOWNLOAD_MAP - 地图数据下载完成！地图名:{roomName} - Total Map Size:{totalSize}");
+        ServerRoomManager.Instance.Log($"MSG: DOWNLOAD_MAP - Download map data succeeded! MapName:{roomName} - Total Map Size:{totalSize}"); // 地图数据下载完成！地图名
     }
     
     private static void ENTER_ROOM(byte[] bytes)
@@ -403,17 +403,17 @@ public class RoomMsgReply
                     RoomName = roomLogic.RoomName,
                 };
                 ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
-                ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM OK - 玩家进入战场！Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}");
+                ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM OK - Player enters the battlefield! Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}"); // 玩家进入战场！
                 return;
             }
             else
             {
-                errMsg = "玩家没有找到！";
+                errMsg = "Player is not found!"; // 玩家没有找到！ 
             }
         }
         else
         {
-            errMsg = $"战场没有找到！RoomId:{input.RoomId}";
+            errMsg = $"Battlefield is not found! RoomId:{input.RoomId}"; // 战场没有找到！
         }
         {   // 返回失败
             EnterRoomReply output = new EnterRoomReply()
@@ -438,13 +438,13 @@ public class RoomMsgReply
             ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
             
             string account = roomLogic.GetPlayerInRoom(_args)?.Enter.Account;
-            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - 玩家离开战场！Account:{account} - Room:{roomLogic.RoomName}");
+            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - Player leaves the battlefield! Account:{account} - Room:{roomLogic.RoomName}"); // 玩家离开战场！
             ServerRoomManager.Instance.RemovePlayer(_args, input.ReleaseIfNoUser);
             ret = true;
         }
         else
         {
-            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM Error - 战场没有找到! RoomId:{input.RoomId}");                
+            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM Error - Battlefield is not found! RoomId:{input.RoomId}"); // 战场没有找到     
         }
 
         LeaveRoomReply output = new LeaveRoomReply()
@@ -460,7 +460,7 @@ public class RoomMsgReply
         RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic == null)
         {
-            string msg = $"战场没有找到!";
+            string msg = $"Battlefield is not found!"; // 战场没有找到
             ServerRoomManager.Instance.Log("MSG: DOWNLOAD_CITIES Error - " + msg + $" - {input.RoomId}");
             DownloadCitiesReply output = new DownloadCitiesReply()
             {
@@ -474,7 +474,7 @@ public class RoomMsgReply
         PlayerInfo pi = roomLogic.GetPlayerInRoom(_args);
         if (pi == null)
         {
-            string msg = $"当前玩家没有找到!";
+            string msg = $"Current Player is not found!"; // 当前玩家没有找到
             ServerRoomManager.Instance.Log("MSG: DOWNLOAD_CITIES Error - " + msg);
             DownloadCitiesReply output = new DownloadCitiesReply()
             {
@@ -529,7 +529,7 @@ public class RoomMsgReply
         RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic == null)
         {
-            string msg = $"战场没有找到!";
+            string msg = $"Battlefield is not found!"; // 战场没有找到
             ServerRoomManager.Instance.Log("MSG: DOWNLOAD_ACTORS Error - " + msg + $" - {input.RoomId}");
             DownloadCitiesReply output = new DownloadCitiesReply()
             {
@@ -691,7 +691,7 @@ public class RoomMsgReply
         }
         else
         {
-            msg = $"战场没有找到! RoomId:{input.RoomId}";
+            msg = $"Battlfield is not found! RoomId:{input.RoomId}"; // 战场没有找到! 
             ServerRoomManager.Instance.Log("MSG: DOWNLOAD_RES Error - " + msg);
         }
 

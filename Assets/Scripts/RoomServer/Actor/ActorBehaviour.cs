@@ -219,7 +219,7 @@ namespace AI
         AmmoBase = input.AmmoBase;
         if (AmmoBase > AmmoBaseMax)
         {
-            ServerRoomManager.Instance.Log($"ActorBehaviour OnAmmoSupply Error - 弹药基数出现异常:{AmmoBase}/{AmmoBaseMax}");
+            ServerRoomManager.Instance.Log($"ActorBehaviour OnAmmoSupply Error - Ammobase is invalid! AmmoBase:{AmmoBase}/{AmmoBaseMax}"); //  弹药基数出现异常
             AmmoBase = AmmoBaseMax;
         }
         

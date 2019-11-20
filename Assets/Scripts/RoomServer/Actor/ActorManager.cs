@@ -103,7 +103,7 @@ namespace AI
                 }
                 AddActor(ab, roomLogic);
             }
-            ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - 单元个数：{AllActors.Count}");
+            ServerRoomManager.Instance.Log($"ActorManager LoadBuffer OK - Count of Actors ：{AllActors.Count}"); //单元个数
     
             return true;
         }

@@ -42,7 +42,7 @@ public class ServerRoomManager : MonoBehaviour
     [Space(), Header("Debug"), Space(5)]
     public bool IsCheckHeartBeat;
     
-    private const float _HEART_BEAT_INTERVAL = 20f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
+    private const float _HEART_BEAT_INTERVAL = 60f; // 心跳时间间隔,服务器检测用的间隔比客户端实际间隔要多一些
 
     void Awake()
     {
@@ -157,7 +157,7 @@ public class ServerRoomManager : MonoBehaviour
             if (pi.IsReady && ts.TotalSeconds > _HEART_BEAT_INTERVAL)
             { // 该客户端超时没有心跳了,干掉. 客户端必须是已经进入房间的,因为loading时间较长
                 delPlayerList.Add(keyValue.Key);
-                _server.Log($"长时间没有检测到心跳,将客户端踢出! - {pi.Enter.Account}");
+                Log($"HeartBeat is not detected! Kick out! - {keyValue.Value.Enter.Account} - time:{ts.TotalSeconds}"); // 长时间没有检测到心跳,将客户端踢出
             }
         }
         foreach (var args in delPlayerList)
@@ -183,33 +183,33 @@ public class ServerRoomManager : MonoBehaviour
             case ServerSocketAction.Listen:
                 // 因为启动顺序的关系，这段代码不会被执行到
                 receive_str = $"RoomServer started! {_server.Address}:{_server.Port}";
-                _server.Log(receive_str);
+                Log(receive_str);
                 break;
             case ServerSocketAction.Accept:
                 receive_str = $"RoomServer accepted a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
-                _server.Log(receive_str);
+                Log(receive_str);
                 break;
             case ServerSocketAction.Send:
             {
-                int size = args.BytesTransferred;
-                _server.Log($"RoomServer send a message. {size} bytes");
+                //int size = args.BytesTransferred;
+                //Log($"RoomServer send a message. {size} bytes");
             }
                 break;
             case ServerSocketAction.Receive:
             {
-                int size = args.BytesTransferred;
-                _server.Log($"RoomServer receive a message. {size} bytes");
+                //int size = args.BytesTransferred;
+                //Log($"RoomServer receive a message. {size} bytes");
             }
                 break;
             case ServerSocketAction.Drop:
                 DropAClient(args);
                 receive_str = $"RoomServer drop a client! Total Count :{_server.ClientCount}/{_server.MaxClientCount}";
-                _server.Log(receive_str);
+                Log(receive_str);
                 break;
             case ServerSocketAction.Close:
                 StopCheckHeartBeat();
                 receive_str = "RoomServer Stopped!";
-                _server.Log(receive_str);
+                Log(receive_str);
                 break;
             case ServerSocketAction.Error:
                 receive_str = System.Text.Encoding.UTF8.GetString(args.Buffer);
@@ -249,7 +249,7 @@ public class ServerRoomManager : MonoBehaviour
                 UpdateRoomInfoToLobby(roomLogic);
             }
             
-            Log($"MSG: DropAClient - 玩家离开房间服务器 - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}");
+            Log($"MSG: DropAClient - User left the room-server - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}"); // 玩家离开房间服务器 
             RemovePlayer(args, true);
         }
         else

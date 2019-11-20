@@ -55,7 +55,7 @@ public class ResManager
             res.LoadBuffer(br, version);
             AddRes(cellIndex, res);
         }
-        ServerRoomManager.Instance.Log($"ResManager LoadBuffer OK - 资源个数：{AllRes.Count}");
+        ServerRoomManager.Instance.Log($"ResManager LoadBuffer OK - Count of Res ：{AllRes.Count}"); // 资源个数
 
         return true;
     }

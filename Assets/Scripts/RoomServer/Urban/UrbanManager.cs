@@ -74,7 +74,7 @@ public class UrbanManager
             city.LoadBuffer(br);
             AddCity(city);
         }
-        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer OK - 城市个数：{AllCities.Count}");
+        ServerRoomManager.Instance.Log($"UrbanManager LoadBuffer OK - Count of Cities ：{AllCities.Count}"); // 城市个数
 
         return true;
     }

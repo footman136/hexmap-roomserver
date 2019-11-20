@@ -176,13 +176,13 @@ public class RoomLogic
         byte[] resBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (resBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadRes Error - Resource Data not found in Redis! 如果是新战场则不是错误! - Key:{keyName}");
+            ServerRoomManager.Instance.Log($"RoomLogic LoadRes Error - Resource Data not found in Redis! It is not an error if it is a new battlefiled! - Key:{keyName}"); //  如果是新战场则不是错误! 
             return;
         }
 
         ServerRoomManager.Instance.Log(!ResManager.LoadBuffer(resBytes, resBytes.Length)
             ? "RoomLogic LoadRes Error - Resource LoadBuffer Failed!"
-            : $"RoomLogic LoadRes OK - 资源个数：{ResManager.AllRes.Count}");
+            : $"RoomLogic LoadRes OK - Count of Res ：{ResManager.AllRes.Count}"); // 资源个数 
     }
 
     /// <summary>
@@ -213,13 +213,13 @@ public class RoomLogic
         byte[] cityBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (cityBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadCity Error - City Data not found in Redis! 如果是新战场则不是错误! - Key:{keyName}");
+            ServerRoomManager.Instance.Log($"RoomLogic LoadCity Error - City Data not found in Redis! It is not an error if it is a new battlefiled! - Key:{keyName}");//  如果是新战场则不是错误!
             return;
         }
 
         ServerRoomManager.Instance.Log(!UrbanManager.LoadBuffer(cityBytes, cityBytes.Length)
             ? "RoomLogic LoadCity Error - City LoadBuffer Failed!"
-            : $"RoomLogic LoadCity OK - 城市个数：{UrbanManager.AllCities.Count}");
+            : $"RoomLogic LoadCity OK - Count of Cites ：{UrbanManager.AllCities.Count}"); // 城市个数
     }
 
     /// <summary>
@@ -249,13 +249,13 @@ public class RoomLogic
         byte[] actorBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (actorBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadActor Error - Actor Data not found in Redis! 如果是新战场则不是错误! - Key:{keyName}");
+            ServerRoomManager.Instance.Log($"RoomLogic LoadActor Error - Actor Data not found in Redis! It is not an error if it is a new battlefiled! - Key:{keyName}");//  如果是新战场则不是错误!
             return;
         }
 
         ServerRoomManager.Instance.Log(!ActorManager.LoadBuffer(actorBytes, actorBytes.Length, this)
             ? "RoomLogic LoadActor Error - Actor LoadBuffer Failed!"
-            : $"RoomLogic LoadActor OK - 单元个数：{ActorManager.AllActors.Count}");
+            : $"RoomLogic LoadActor OK - Count of Actors ：{ActorManager.AllActors.Count}"); // 单元个数
     }
 
     public void SavePlayer(PlayerInfo pi)
@@ -287,7 +287,7 @@ public class RoomLogic
         byte[] playerBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (playerBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist! 如果是新玩家则不是错误! - Player:{pi.Enter.Account} - Key:{keyName}");
+            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist!It is not an error if it is a new battlefiled! - Player:{pi.Enter.Account} - Key:{keyName}");//  如果是新战场则不是错误!
             return false;
         }
 
@@ -338,7 +338,7 @@ public class RoomLogic
 
         PlayersInRoom[args] = pi;
         _curPlayerCount = PlayersInRoom.Count;
-        ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - 玩家进入战场! Player:{pi.Enter.Account}");
+        ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - Player entered the battlefield! Player:{pi.Enter.Account}"); // 玩家进入战场
     }
 
     public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
@@ -355,7 +355,7 @@ public class RoomLogic
             ServerRoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
         }
         _curPlayerCount = PlayersInRoom.Count;
-        ServerRoomManager.Instance.Log($"RoomLogic RemovePlayer OK - 玩家离开战场! Player:{pi.Enter.Account}");
+        ServerRoomManager.Instance.Log($"RoomLogic RemovePlayer OK - Player left the battlefield! Player:{pi.Enter.Account}"); // 玩家离开战场
     }
 
     public PlayerInfo GetPlayerInRoom(SocketAsyncEventArgs args)

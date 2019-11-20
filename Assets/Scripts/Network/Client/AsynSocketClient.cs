@@ -179,7 +179,7 @@ public class AsynSocketClient
                     // 真正的互联网环境下会有消息包被截断的情况，所以发送的时候必须在开始定义4个字节的包长度，目前是测试阶段，暂时不开放。
                     //读取数据  
                     byte[] data = new byte[count];
-                    Log($"Client Found data received - {count} byts");
+                    // Log($"Client Found data received - {count} byts");
                     lock (m_buffer)  
                     {  
                         m_buffer.AddRange(state.ListData.Take<byte>(count).ToArray());  
@@ -273,7 +273,7 @@ public class AsynSocketClient
                 if (ex.ErrorCode == (int) SocketError.ConnectionAborted)
                 {
                     Stop();
-                    string err = $"Exceptioin - SendAsync() - 连接已经放弃! - {ex}";
+                    string err = $"Exceptioin - SendAsync() - Give up th connection! - {ex}"; // 连接已经放弃
                     OnComplete(tcpClient, SocketAction.Error, err);
                 }
                 else
