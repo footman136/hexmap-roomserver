@@ -208,33 +208,33 @@ namespace AI
         
         #endregion
     
-    #region 补充弹药
-
-    private void OnAmmoSupply(SocketAsyncEventArgs args, byte[] bytes)
-    {
-        AmmoSupply input = AmmoSupply.Parser.ParseFrom(bytes);
-        if (input.ActorId != ActorId)
-            return; // 不是自己，略过
-
-        AmmoBase = input.AmmoBase;
-        if (AmmoBase > AmmoBaseMax)
+        #region 补充弹药
+    
+        private void OnAmmoSupply(SocketAsyncEventArgs args, byte[] bytes)
         {
-            ServerRoomManager.Instance.Log($"ActorBehaviour OnAmmoSupply Error - Ammobase is invalid! AmmoBase:{AmmoBase}/{AmmoBaseMax}"); //  弹药基数出现异常
-            AmmoBase = AmmoBaseMax;
+            AmmoSupply input = AmmoSupply.Parser.ParseFrom(bytes);
+            if (input.ActorId != ActorId)
+                return; // 不是自己，略过
+    
+            AmmoBase = input.AmmoBase;
+            if (AmmoBase > AmmoBaseMax)
+            {
+                ServerRoomManager.Instance.Log($"ActorBehaviour OnAmmoSupply Error - Ammobase is invalid! AmmoBase:{AmmoBase}/{AmmoBaseMax}"); //  弹药基数出现异常
+                AmmoBase = AmmoBaseMax;
+            }
+            
+            AmmoSupplyReply output = new AmmoSupplyReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                AmmoBase = input.AmmoBase,
+                Ret = true,
+            };
+            _roomLogic.BroadcastMsg(ROOM_REPLY.AmmoSupplyReply, output.ToByteArray());
         }
         
-        AmmoSupplyReply output = new AmmoSupplyReply()
-        {
-            RoomId = input.RoomId,
-            OwnerId = input.OwnerId,
-            ActorId = input.ActorId,
-            AmmoBase = input.AmmoBase,
-            Ret = true,
-        };
-        _roomLogic.BroadcastMsg(ROOM_REPLY.AmmoSupplyReply, output.ToByteArray());
-    }
-    
-    #endregion
+        #endregion
         
         #region AI - 第一层
 //        IEnumerator Running()

@@ -124,11 +124,10 @@ public class ServerRoomManager : MonoBehaviour
     {
         UpdateName();
         
-        // [定时恢复行动点] (会不会有多线程问题? 这里是主线程运行的)
-        foreach (var keyValue in Players)
+        // [定时存盘] (会不会有多线程问题? 这里是主线程运行的)
+        foreach (var keyValue in Rooms)
         {
-            var pi = keyValue.Value;
-            pi?.Tick();
+            keyValue.Value.Tick();
         }
     }
     
@@ -306,11 +305,15 @@ public class ServerRoomManager : MonoBehaviour
             Log($"RoomManager RemovePlayer Error - Player not found!");
             return;
         }
+        
+        // 如果该玩家还没有离开房间, 则要离开这个房间
         RoomLogic roomLogic = Rooms[pi.RoomId];
-        // 存盘
-        roomLogic.SaveCommonInfo(args);
-        roomLogic.SaveActor();
-        roomLogic.SaveCity();
+        if (roomLogic.IsOnline(pi.Enter.TokenId))
+        {
+            roomLogic.Offline(pi.Enter.TokenId);
+        }
+
+        // 最后看是否需要关闭房间
         if (roomLogic.CurPlayerCount == 0 && bCloseRoomIfNoUser)
         { // 关闭房间
             roomLogic.Fini(); // 结束化
@@ -323,7 +326,6 @@ public class ServerRoomManager : MonoBehaviour
             };
             MixedManager.Instance.LobbyManager.SendMsg(Protobuf.Lobby.LOBBY.UpdateRoomInfo, output2.ToByteArray());
         }
-        RemovePlayerFromRoom(args);
         Players.Remove(args);
     }
 
@@ -340,28 +342,6 @@ public class ServerRoomManager : MonoBehaviour
         }
     }
 
-    public void SetPlayerInfo(SocketAsyncEventArgs args, PlayerInfo playerInfo)
-    {
-        if (Players.ContainsKey(args))
-        {
-            Players[args] = playerInfo;
-        }
-    }
-
-    public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
-    {
-        long roomId = -1;
-        if (Players.ContainsKey(args))
-        {
-            roomId = Players[args].RoomId;
-        }
-
-        if (roomId != -1)
-        {
-            Rooms[roomId].RemovePlayerFromRoom(args);
-        }
-    }
-    
     public SocketAsyncEventArgs FindPlayerArgs(long tokenId)
     {
         foreach (var keyValue in Players)
@@ -375,7 +355,6 @@ public class ServerRoomManager : MonoBehaviour
 
         return null;
     }
-
     
     #endregion
     

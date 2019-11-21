@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using GameUtils;
 using Google.Protobuf;
@@ -27,8 +29,7 @@ public class RoomLogic
     public ResManager ResManager = new ResManager();
     
 
-    private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> PlayersInRoom = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
-    private readonly Dictionary<SocketAsyncEventArgs, PlayerInfo> AIPlayers = new Dictionary<SocketAsyncEventArgs, PlayerInfo>();
+    private readonly Dictionary<long, PlayerInfoInRoom> PlayersInRoom = new Dictionary<long, PlayerInfoInRoom>();
 
     public string RoomName => _roomName;
     public long RoomId => _roomId;
@@ -46,17 +47,22 @@ public class RoomLogic
         _creator = roomInfo.Creator;
         _curPlayerCount = 0;
 
-        // 取盘
-        LoadCity();
-        LoadActor();
-        LoadRes();
+        Load();
         
         AddListener();
+        
+        DateTime nowTime = DateTime.Now;
+        ServerRoomManager.Instance.Log($"RoomLogic Init - Battle-room Opened - {_roomName}.{nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
     }
 
     public void Fini()
     {
         RemoveListener();
+
+        Save();
+        
+        DateTime nowTime = DateTime.Now;
+        ServerRoomManager.Instance.Log($"RoomLogic Fini - Battle-room Closed - {_roomName}.{nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
     }
 
     public void AddListener()
@@ -102,7 +108,29 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStop, OnFightStop);
     }
-    
+
+    private const float _TIME_INTERVAL_SAVE = 600f; // 每隔5分钟存盘一次
+    private float _timeNow;
+    public void Tick()
+    {
+        if (_timeNow >= _TIME_INTERVAL_SAVE)
+        {
+            _timeNow = 0;
+            Save();
+            return;
+        }
+
+        _timeNow += Time.deltaTime;
+        
+        // [定时恢复行动点] (会不会有多线程问题? 这里是主线程运行的)
+        foreach (var keyValue in PlayersInRoom)
+        {
+            var pi = keyValue.Value;
+            pi?.Tick();
+        }
+
+    }
+
     #endregion
 
     #region 地图
@@ -123,29 +151,23 @@ public class RoomLogic
     
     #region 存盘/取盘
 
-    /// <summary>
-    /// 保存基础信息,仅供查看
-    /// </summary>
-    /// <param name="args"></param>
-    public void SaveCommonInfo(SocketAsyncEventArgs args)
+    private void Load()
     {
-        string tableName = $"MAP:{RoomId}";
-        string keyName = $"Infos";
-        string info = $"Total City Count:{UrbanManager.AllCities.Count} | Total Actor Count:{ActorManager.AllActors.Count} | Total Res Count:{ResManager.AllRes.Count}";
-        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
-        
-        // 本玩家身上的物体的数量
-        PlayerInfo pi = GetPlayerInRoom(args);
-        if (pi == null)
-        {
-            ServerRoomManager.Instance.Log("RoomLogic SaveCommonInfo Error - player not found!");
-            return;
-        }
+        // 取盘
+        LoadCity();
+        LoadActor();
+        LoadRes();
+        LoadAllPlayers();
+    }
 
-        long ownerId = pi.Enter.TokenId;
-        keyName = $"Infos-{ownerId}";
-        info = $"City Count:{UrbanManager.CountOfThePlayer(ownerId)}/{UrbanManager.AllCities.Count} | Actor Count:{ActorManager.CountOfThePlayer(ownerId)}/{ActorManager.AllActors.Count} | Res Count:{ResManager.AllRes.Count}";
-        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
+    private void Save()
+    {
+        SaveCity();
+        SaveActor();
+        SaveRes();
+        SaveAllPlayers();
+        DateTime nowTime = DateTime.Now;
+        ServerRoomManager.Instance.Log($"RoomLogic - Game saved. {nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
     }
 
     /// <summary>
@@ -188,7 +210,7 @@ public class RoomLogic
     /// <summary>
     /// 保存该玩家的城市数据
     /// </summary>
-    public void SaveCity()
+    private void SaveCity()
     {
         byte[] cityBytes = UrbanManager.SaveBuffer();
         if (cityBytes.Length > 1024 * 8)
@@ -225,7 +247,7 @@ public class RoomLogic
     /// <summary>
     /// 保存该玩家的单元数据
     /// </summary>
-    public void SaveActor()
+    private void SaveActor()
     {
         byte[] actorBytes = ActorManager.SaveBuffer();
         if (actorBytes.Length > 1024 * 32)
@@ -258,116 +280,264 @@ public class RoomLogic
             : $"RoomLogic LoadActor OK - Count of Actors ：{ActorManager.AllActors.Count}"); // 单元个数
     }
 
-    public void SavePlayer(PlayerInfo pi)
+    private void SaveAllPlayers()
     {
-        if (pi == null)
+        foreach (var keyValue in PlayersInRoom)
+        {
+            var piir = keyValue.Value;
+            SavePlayer(piir);
+            SavePlayerDebugInfo(piir);
+        }
+    }
+
+    private void LoadAllPlayers()
+    {
+        // 1-从redis里把本房间里所有的玩家的id都读出来
+        List<long> playerIdList = LoadAllPlayerIdsInRoom();
+        // 2-创建实例, 然后把每个玩家在redis的存盘都读出来
+        for (int i = 0; i < playerIdList.Count; ++i)
+        {
+            PlayerInfoInRoom piir = new PlayerInfoInRoom();
+            if (piir != null)
+            {
+                piir.Enter.TokenId = playerIdList[i];
+            }
+
+            if (LoadPlayer(piir))
+            { // 可能存在没有存盘的情况, 比如玩家刚刚进入游戏, 而服务器还没有存盘, 
+                PlayersInRoom[playerIdList[i]] = piir;
+                piir.Offline(); // 这时候没人在线
+            }
+        }
+    }
+
+    public void SavePlayer(PlayerInfoInRoom piirir)
+    {
+        if (piirir == null)
         {
             ServerRoomManager.Instance.Log("RoomLogic SavePlayer Error - Player not found!");
             return;
         }
 
-        byte[] playerBytes = pi.SaveBuffer();
+        byte[] playerBytes = piirir.SaveBuffer();
         string tableName = $"MAP:{RoomId}";
-        string keyName = $"Player-{pi.Enter.TokenId}";
+        string keyName = $"Player-{piirir.Enter.TokenId}";
         ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, playerBytes );
     
-        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{pi.Enter.Account}");
+        ServerRoomManager.Instance.Log($"RoomLogic SavePlayer OK - Player:{piirir.Enter.Account}");
     }
 
-    public bool LoadPlayer(PlayerInfo pi)
+    public bool LoadPlayer(PlayerInfoInRoom piir)
     {
-        if (pi == null)
+        if (piir == null)
         {
             ServerRoomManager.Instance.Log("RoomLogic LoadPlayer Error - Player not found!");
             return false;
         }
         
         string tableName = $"MAP:{RoomId}";
-        string keyName = $"Player-{pi.Enter.TokenId}";
+        string keyName = $"Player-{piir.Enter.TokenId}";
         byte[] playerBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (playerBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist!It is not an error if it is a new battlefiled! - Player:{pi.Enter.Account} - Key:{keyName}");//  如果是新战场则不是错误!
+            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist!It is not an error if it is a new battlefiled! - Player:{piir.Enter.Account} - Key:{keyName}");//  如果是新战场则不是错误!
             return false;
         }
 
-        bool ret = pi.LoadBuffer(playerBytes, playerBytes.Length);
+        bool ret = piir.LoadBuffer(playerBytes, playerBytes.Length);
         string msg;
         if (ret)
         {
-            msg = $"RoomLogic LoadPlayer OK - Player:{pi.Enter.Account}";
+            msg = $"RoomLogic LoadPlayer OK - Player:{piir.Enter.Account}";
         }
         else
         {
-            msg = $"RoomLogic LoadPlayer Error - Player LoadBuffer Failed! - Player:{pi.Enter.Account}";
+            msg = $"RoomLogic LoadPlayer Error - Player LoadBuffer Failed! - Player:{piir.Enter.Account}";
         }
 
         ServerRoomManager.Instance.Log(msg);
         return true;
     }
+
+    /// <summary>
+    /// 保存基础信息, 仅供查看, 如果不想看的话, 根本不用保存
+    /// </summary>
+    /// <param name="piir"></param>
+    public void SavePlayerDebugInfo(PlayerInfoInRoom piir)
+    {
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"Infos";
+        string info = $"Total City Count:{UrbanManager.AllCities.Count} | Total Actor Count:{ActorManager.AllActors.Count} | Total Res Count:{ResManager.AllRes.Count}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
+        
+        // 本玩家身上的物体的数量
+        if (piir == null)
+        {
+            ServerRoomManager.Instance.Log("RoomLogic SaveCommonInfo Error - player not found!");
+            return;
+        }
+
+        long ownerId = piir.Enter.TokenId;
+        keyName = $"Infos-{ownerId}";
+        info = $"City Count:{UrbanManager.CountOfThePlayer(ownerId)}/{UrbanManager.AllCities.Count} | Actor Count:{ActorManager.CountOfThePlayer(ownerId)}/{ActorManager.AllActors.Count} | Res Count:{ResManager.AllRes.Count}";
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, info);
+    }
+
+    public void AddPlayerIdToRedis(PlayerInfoInRoom piir)
+    {
+        if (piir == null)
+        {
+            ServerRoomManager.Instance.Log("RoomLogic AddPlayerIdToRedis Error - Player not found!");
+            return;
+        }
+        
+        // 1-把玩家列表从redis里读出来
+        List<long> playerIdList = LoadAllPlayerIdsInRoom();
+        if (playerIdList.Count == 0)
+        { // 调试用
+            long[] Ids = { -1858895091378629347, -5280871521389498391, -8236625811434607887, 2448695053450986095, 512909072226182911, 9095304521408418377};
+            playerIdList = Ids.ToList();
+        }
+        // 2-添加自己
+        if (!playerIdList.Contains(piir.Enter.TokenId))
+        {
+            playerIdList.Add(piir.Enter.TokenId);
+        }
+
+        // 3-保存回redis
+        SaveAllPlayerIdsInRoom(playerIdList);
+    }
     
+    private List<long> LoadAllPlayerIdsInRoom()
+    {
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"AllPlayerIdsInRoom";
+        byte[] readPlayersInRoom = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
+        List<long> playerIdList = new List<long>();
+        if (readPlayersInRoom != null)
+        {
+            MemoryStream ms = new MemoryStream(readPlayersInRoom);
+            BinaryReader br = new BinaryReader(ms);
+            int count = br.ReadInt32();
+            for (int i = 0; i < count; ++i)
+            {
+                long playerId = br.ReadInt64();
+                playerIdList.Add(playerId);
+            }
+        }
+
+        return playerIdList;
+    }
+
+    private void SaveAllPlayerIdsInRoom(List<long> playerIdList)
+    {
+        string tableName = $"MAP:{RoomId}";
+        string keyName = $"AllPlayerIdsInRoom";
+        MemoryStream ms = new MemoryStream();
+        BinaryWriter bw = new BinaryWriter(ms);
+        bw.Write(playerIdList.Count);
+        for (int i = 0; i < playerIdList.Count; ++i)
+        {
+            bw.Write(playerIdList[i]);
+        }
+        
+        ServerRoomManager.Instance.Redis.CSRedis.HSet(tableName, keyName, ms.GetBuffer());
+    }
+
     #endregion
     
     #region 玩家
     
-    /// <summary>
-    /// 房间里的[玩家管理器]PlayerInRoom是对整个房间服务器里的[玩家管理器]Players的引用
-    /// </summary>
-    /// <param name="args"></param>
-    /// <param name="pi"></param>
-    public void AddPlayerToRoom(SocketAsyncEventArgs args, PlayerInfo pi)
+    public void Online(long playerId, SocketAsyncEventArgs args, PlayerEnter enter, long roomId)
     {
-        if (!LoadPlayer(pi))
-        { // 如果没有存盘,则读取初始数据
+        var piir = GetPlayerInRoom(playerId);
+        if (piir == null)
+        { // 如果房间里实际没有这个玩家(的存盘), 则表明这是一个新用户, 要从表格中读取初始数据
+            piir = new PlayerInfoInRoom();
             var csv = CsvDataManager.Instance.GetTable("battle_init");
             int wood = csv.GetValueInt(1, "PlayerInit_Wood");
             int food = csv.GetValueInt(1, "PlayerInit_Food");
             int iron = csv.GetValueInt(1, "PlayerInit_Iron");
             int actionPointMax = csv.GetValueInt(1, "MaxActionPoint");
-            pi.AddWood(wood);
-            pi.AddFood(food);
-            pi.AddIron(iron);
-            pi.SetActionPointMax(actionPointMax);
-            pi.AddActionPoint(actionPointMax);
-            pi.TimeSinceLastSave = DateTime.Now.ToFileTime();
-            pi.TimeSinceLastRestoreActionPoint = 0;
+            piir.AddWood(wood);
+            piir.AddFood(food);
+            piir.AddIron(iron);
+            piir.SetActionPointMax(actionPointMax);
+            piir.AddActionPoint(actionPointMax);
+            piir.TimeSinceLastSave = DateTime.Now.ToFileTime();
+            piir.TimeSinceLastRestoreActionPoint = 0;
+            PlayersInRoom[playerId] = piir;
         }
+        // 把本玩家记录到Room的Redis里, 便于以后查找, 这里保存的就是房间内所有的玩家的id
+        AddPlayerIdToRedis(piir);
         
+        // 玩家上线
+        piir.Online(args, enter, roomId);
+
         // 玩家进入以后,根据该玩家[离开游戏]的时间,到[现在]的时间差(秒),计算出应该恢复多少的行动点数, 一次性恢复之
-        pi.RestoreActionPointAfterLoading();
+        piir.RestoreActionPointAfterLoading();
 
-        PlayersInRoom[args] = pi;
         _curPlayerCount = PlayersInRoom.Count;
-        ServerRoomManager.Instance.Log($"RoomLogic AddPlayer OK - Player entered the battlefield! Player:{pi.Enter.Account}"); // 玩家进入战场
-    }
-
-    public void RemovePlayerFromRoom(SocketAsyncEventArgs args)
-    {
-        var pi = GetPlayerInRoom(args);
-        SavePlayer(pi);
+        ServerRoomManager.Instance.Log($"RoomLogic Online OK - Player entered the battlefield! Player:{piir.Enter.Account}"); // 玩家进入战场
         
-        if (PlayersInRoom.ContainsKey(args))
-        {
-            PlayersInRoom.Remove(args);
-        }
-        else
-        {
-            ServerRoomManager.Instance.Log($"RoomLogic - RemovePlayer - Player not found!");
-        }
-        _curPlayerCount = PlayersInRoom.Count;
-        ServerRoomManager.Instance.Log($"RoomLogic RemovePlayer OK - Player left the battlefield! Player:{pi.Enter.Account}"); // 玩家离开战场
     }
 
-    public PlayerInfo GetPlayerInRoom(SocketAsyncEventArgs args)
+    public void Offline(long playerId)
     {
-        if (PlayersInRoom.ContainsKey(args))
+        var piir = GetPlayerInRoom(playerId);
+        if (piir == null)
         {
-            return PlayersInRoom[args];
+            ServerRoomManager.Instance.Log($"RoomLogic Offline - Player not found!");
+            return;
+        }
+        // 玩家下线
+        piir.Offline();
+        
+        _curPlayerCount = PlayersInRoom.Count;
+        ServerRoomManager.Instance.Log($"RoomLogic Offline OK - Player left the battlefield! Player:{piir.Enter.Account}"); // 玩家离开战场
+    }
+
+    public bool IsOnline(long playerId)
+    {
+        var piir = GetPlayerInRoom(playerId);
+        if (piir != null)
+        {
+            return piir.IsOnline();
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 注意: 这里有两个版本, 这个版本快一点
+    /// </summary>
+    /// <param name="playerId"></param>
+    /// <returns></returns>
+    public PlayerInfoInRoom GetPlayerInRoom(long playerId)
+    {
+        if (PlayersInRoom.ContainsKey(playerId))
+        {
+            return PlayersInRoom[playerId];
         }
 
         return null;
     }
 
+    /// <summary>
+    /// 注意: 这里有两个版本, 这个版本慢一点
+    /// </summary>
+    /// <param name="args"></param>
+    /// <returns></returns>
+    public PlayerInfoInRoom GetPlayerInRoom(SocketAsyncEventArgs args)
+    {
+        PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(args);
+        if (pi != null)
+        {
+            return GetPlayerInRoom(pi.Enter.TokenId);
+        }
+
+        return null;
+    }
     #endregion
     
     /// <summary>
@@ -379,7 +549,10 @@ public class RoomLogic
     {
         foreach (var keyPair in PlayersInRoom)
         {
-            ServerRoomManager.Instance.SendMsg(keyPair.Key, msgId, output);
+            if (keyPair.Value.IsOnline())
+            {
+                ServerRoomManager.Instance.SendMsg(keyPair.Value.Args, msgId, output);
+            }
         }
     }
     
@@ -410,7 +583,7 @@ public class RoomLogic
             Debug.LogError("OnCityAdd Fuck!!! City position is lost!!!");
         }
         
-        bool isCapital = UrbanManager.CountOfThePlayer(input.OwnerId) == 0; // 第一座城市是都城
+        bool isCapiirtal = UrbanManager.CountOfThePlayer(input.OwnerId) == 0; // 第一座城市是都城
         UrbanCity city = new UrbanCity()
         {
             RoomId = input.RoomId,
@@ -421,7 +594,7 @@ public class RoomLogic
             CellIndex = input.CellIndex,
             CityName = input.CityName,
             CitySize = input.CitySize,
-            IsCapital = isCapital,
+            IsCapital = isCapiirtal,
         };
         UrbanManager.AddCity(city);
         
@@ -436,7 +609,7 @@ public class RoomLogic
                 CellIndex = input.CellIndex,
                 CityName = input.CityName,
                 CitySize = input.CitySize,
-                IsCapital = isCapital,
+                IsCapital = isCapiirtal,
                 Ret = true,
             };
             BroadcastMsg(ROOM_REPLY.CityAddReply, output.ToByteArray());
@@ -471,7 +644,9 @@ public class RoomLogic
         if (input.RoomId != _roomId)
             return;
 
-        if (!PlayersInRoom.ContainsKey(args))
+        var piir = GetPlayerInRoom(args);
+
+        if (piir != null)
         {
             ActorAddReply output = new ActorAddReply()
             {
@@ -655,8 +830,8 @@ public class RoomLogic
         TryCommand input = TryCommand.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfo pi = GetPlayerInRoom(args);
-        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(args);
+        if (piir == null || piir.Enter.TokenId != input.OwnerId)
         {
             string msg = "在服务器没有找到本玩家!";
             TryCommandReply output = new TryCommandReply()
@@ -683,7 +858,7 @@ public class RoomLogic
                 ret = false;
             }
 
-            if (pi.ActionPoint < input.ActionPointCost)
+            if (piir.ActionPoint < input.ActionPointCost)
             {
                 msg = "行动点不足, 请稍后再试!";
                 ret = false;
@@ -703,7 +878,7 @@ public class RoomLogic
                 return;
             }
             // 扣除行动点数
-            pi.AddActionPoint(-input.ActionPointCost);
+            piir.AddActionPoint(-input.ActionPointCost);
         }
 
         {
@@ -712,8 +887,8 @@ public class RoomLogic
             {
                 RoomId = input.RoomId,
                 OwnerId = input.OwnerId,
-                ActionPoint = pi.ActionPoint,
-                ActionPointMax = pi.ActionPointMax,
+                ActionPoint = piir.ActionPoint,
+                ActionPointMax = piir.ActionPointMax,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateActionPointReply, output.ToByteArray());
@@ -775,8 +950,8 @@ public class RoomLogic
         hr.SetAmount((ResInfo.RESOURCE_TYPE)input.ResType, input.ResRemain);
         
         // 修改玩家身上的资源数据
-        PlayerInfo pi = GetPlayerInRoom(args);
-        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(args);
+        if (piir == null || piir.Enter.TokenId != input.OwnerId)
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnHarvestStop Error - player not found!{input.OwnerId}");
             return;
@@ -785,13 +960,13 @@ public class RoomLogic
         switch ((ResInfo.RESOURCE_TYPE)input.ResType)
         {
             case ResInfo.RESOURCE_TYPE.WOOD:
-                pi.AddWood(input.ResHarvest);
+                piir.AddWood(input.ResHarvest);
                 break;
             case ResInfo.RESOURCE_TYPE.FOOD:
-                pi.AddFood(input.ResHarvest);
+                piir.AddFood(input.ResHarvest);
                 break;
             case ResInfo.RESOURCE_TYPE.IRON:
-                pi.AddIron(input.ResHarvest);
+                piir.AddIron(input.ResHarvest);
                 break;
         }
         
@@ -814,14 +989,11 @@ public class RoomLogic
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             Ret = true,
-            Wood = pi.Wood,
-            Food = pi.Food,
-            Iron = pi.Iron,
+            Wood = piir.Wood,
+            Food = piir.Food,
+            Iron = piir.Iron,
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateResReply, output2.ToByteArray());
-        
-        // 存盘,效率有点低,但是先这样了
-        SaveRes();
     }
 
     private void OnUpdateRes(SocketAsyncEventArgs args, byte[] bytes)
@@ -829,8 +1001,8 @@ public class RoomLogic
         UpdateRes input = UpdateRes.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfo pi = GetPlayerInRoom(args);
-        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(args);
+        if (piir == null || piir.Enter.TokenId != input.OwnerId)
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnUpdateRes Error - player not found!{input.OwnerId}");
             return;
@@ -840,9 +1012,9 @@ public class RoomLogic
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             Ret = true,
-            Wood = pi.Wood,
-            Food = pi.Food,
-            Iron = pi.Iron,
+            Wood = piir.Wood,
+            Food = piir.Food,
+            Iron = piir.Iron,
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateResReply, output.ToByteArray());
     }
@@ -852,8 +1024,8 @@ public class RoomLogic
         UpdateActionPoint input = UpdateActionPoint.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfo pi = GetPlayerInRoom(args);
-        if (pi == null || pi.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(args);
+        if (piir == null || piir.Enter.TokenId != input.OwnerId)
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnUpdateActionPoint Error - player not found!{input.OwnerId}");
             return;
@@ -863,8 +1035,8 @@ public class RoomLogic
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             Ret = true,
-            ActionPoint = pi.ActionPoint,
-            ActionPointMax = pi.ActionPointMax,
+            ActionPoint = piir.ActionPoint,
+            ActionPointMax = piir.ActionPointMax,
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateActionPointReply, output.ToByteArray());
     }

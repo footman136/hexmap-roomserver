@@ -226,7 +226,7 @@ namespace Protobuf.Room {
   #region Messages
   /// <summary>
   //////////////////////////////////////////////////
-  /// ĞÄÌø
+  /// å¿ƒè·³
   /// </summary>
   public sealed partial class HeartBeat : pb::IMessage<HeartBeat> {
     private static readonly pb::MessageParser<HeartBeat> _parser = new pb::MessageParser<HeartBeat>(() => new HeartBeat());
@@ -331,7 +331,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// Íæ¼Ò¸Õ¸Õ¼ÓÈë·şÎñÆ÷
+  /// ç©å®¶åˆšåˆšåŠ å…¥æœåŠ¡å™¨
   /// </summary>
   public sealed partial class PlayerEnter : pb::IMessage<PlayerEnter> {
     private static readonly pb::MessageParser<PlayerEnter> _parser = new pb::MessageParser<PlayerEnter>(() => new PlayerEnter());
@@ -621,7 +621,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// Íæ¼ÒÔÚ¿Í»§¶Ë´´½¨ÁËµØÍ¼ÒÔºó,ÉÏ´«µ½·şÎñÆ÷½øĞĞ±£´æ
+  /// ç©å®¶åœ¨å®¢æˆ·ç«¯åˆ›å»ºäº†åœ°å›¾ä»¥å,ä¸Šä¼ åˆ°æœåŠ¡å™¨è¿›è¡Œä¿å­˜
   /// </summary>
   public sealed partial class UploadMap : pb::IMessage<UploadMap> {
     private static readonly pb::MessageParser<UploadMap> _parser = new pb::MessageParser<UploadMap>(() => new UploadMap());
@@ -1079,7 +1079,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ËùÓĞÍæ¼Ò½øÈë·¿¼ä,¶¼Òª´Ó·şÎñÆ÷ÏÂÔØ·şÎñÆ÷Êı¾İ
+  /// æ‰€æœ‰ç©å®¶è¿›å…¥æˆ¿é—´,éƒ½è¦ä»æœåŠ¡å™¨ä¸‹è½½æœåŠ¡å™¨æ•°æ®
   /// </summary>
   public sealed partial class DownloadMap : pb::IMessage<DownloadMap> {
     private static readonly pb::MessageParser<DownloadMap> _parser = new pb::MessageParser<DownloadMap>(() => new DownloadMap());
@@ -1565,7 +1565,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ½øÈë/Àë¿ª·¿¼ä
+  /// è¿›å…¥/ç¦»å¼€æˆ¿é—´
   /// </summary>
   public sealed partial class NetRoomInfo : pb::IMessage<NetRoomInfo> {
     private static readonly pb::MessageParser<NetRoomInfo> _parser = new pb::MessageParser<NetRoomInfo>(() => new NetRoomInfo());
@@ -2522,7 +2522,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ³ÇÊĞ
+  /// åŸå¸‚
   /// </summary>
   public sealed partial class DownloadCities : pb::IMessage<DownloadCities> {
     private static readonly pb::MessageParser<DownloadCities> _parser = new pb::MessageParser<DownloadCities>(() => new DownloadCities());
@@ -3056,7 +3056,7 @@ namespace Protobuf.Room {
     public const int CreatorIdFieldNumber = 9;
     private long creatorId_;
     /// <summary>
-    ///bool IsCapital = 10; ÊÇ·ñÊÇ¶¼³Ç£¬ÓÉ·şÎñÆ÷À´Ëã£¬ÔİÊ±²»ĞèÒª¿Í»§¶ËÀ´´«
+    ///bool IsCapital = 10; æ˜¯å¦æ˜¯éƒ½åŸï¼Œç”±æœåŠ¡å™¨æ¥ç®—ï¼Œæš‚æ—¶ä¸éœ€è¦å®¢æˆ·ç«¯æ¥ä¼ 
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public long CreatorId {
@@ -4087,7 +4087,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// µ¥Ôª(²¿¶ÓºÍ½¨Öş)
+  /// å•å…ƒ(éƒ¨é˜Ÿå’Œå»ºç­‘)
   /// </summary>
   public sealed partial class DownloadActors : pb::IMessage<DownloadActors> {
     private static readonly pb::MessageParser<DownloadActors> _parser = new pb::MessageParser<DownloadActors>(() => new DownloadActors());
@@ -5603,7 +5603,7 @@ namespace Protobuf.Room {
     public const int DieTypeFieldNumber = 4;
     private int dieType_;
     /// <summary>
-    /// ËÀÍö·½Ê½,0-ÆÕÍ¨É¾³ı;1-Õ½¶·ÖÂËÀ
+    /// æ­»äº¡æ–¹å¼,0-æ™®é€šåˆ é™¤;1-æˆ˜æ–—è‡´æ­»
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int DieType {
@@ -7232,8 +7232,8 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ¸üĞÂµ¥ÔªµÄÊôĞÔ,
-  /// ¸üĞÂ×ø±ê,ÒòÎª·şÎñÆ÷Ä¿Ç°Ã»ÓĞÈÎºÎ¼ÆËã,Á¬×ø±ê¶¼Òª´Ó¿Í»§¶Ë´«¹ıÀ´,ËùÒÔ·şÎñÆ÷ÒªÆµ·±µÃµ½¸üĞÂ,·ñÔòÎŞ·¨±£´æÍæ¼Òµ±Ç°Î»ÖÃ
+  /// æ›´æ–°å•å…ƒçš„å±æ€§,
+  /// æ›´æ–°åæ ‡,å› ä¸ºæœåŠ¡å™¨ç›®å‰æ²¡æœ‰ä»»ä½•è®¡ç®—,è¿åæ ‡éƒ½è¦ä»å®¢æˆ·ç«¯ä¼ è¿‡æ¥,æ‰€ä»¥æœåŠ¡å™¨è¦é¢‘ç¹å¾—åˆ°æ›´æ–°,å¦åˆ™æ— æ³•ä¿å­˜ç©å®¶å½“å‰ä½ç½®
   /// </summary>
   public sealed partial class UpdateActorPos : pb::IMessage<UpdateActorPos> {
     private static readonly pb::MessageParser<UpdateActorPos> _parser = new pb::MessageParser<UpdateActorPos>(() => new UpdateActorPos());
@@ -7533,7 +7533,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// ·µ»ØÏûÏ¢,Ä¿Ç°Ã»ÓĞÓÃ,ÒòÎªÉÏ´«µ½·şÎñÆ÷¾Í¿ÉÒÔÁË,Ò²²»ĞèÒªÍ¨Öª±ğÈË,×ø±êÍ¬²½µÄ²Ù×÷,ÊÇAiStateChange¸ºÔğ´¦ÀíÁË
+  /// è¿”å›æ¶ˆæ¯,ç›®å‰æ²¡æœ‰ç”¨,å› ä¸ºä¸Šä¼ åˆ°æœåŠ¡å™¨å°±å¯ä»¥äº†,ä¹Ÿä¸éœ€è¦é€šçŸ¥åˆ«äºº,åæ ‡åŒæ­¥çš„æ“ä½œ,æ˜¯AiStateChangeè´Ÿè´£å¤„ç†äº†
   /// </summary>
   public sealed partial class UpdateActorPosReply : pb::IMessage<UpdateActorPosReply> {
     private static readonly pb::MessageParser<UpdateActorPosReply> _parser = new pb::MessageParser<UpdateActorPosReply>(() => new UpdateActorPosReply());
@@ -7861,7 +7861,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// ¸üĞÂÆäËûÊôĞÔ,±ÈÈçÑªÁ¿:Hp,AmmoBase
+  /// æ›´æ–°å…¶ä»–å±æ€§,æ¯”å¦‚è¡€é‡:Hp,AmmoBase
   /// </summary>
   public sealed partial class UpdateActorInfo : pb::IMessage<UpdateActorInfo> {
     private static readonly pb::MessageParser<UpdateActorInfo> _parser = new pb::MessageParser<UpdateActorInfo>(() => new UpdateActorInfo());
@@ -8447,7 +8447,7 @@ namespace Protobuf.Room {
     public const int AiStateFieldNumber = 4;
     private int aiState_;
     /// <summary>
-    /// ËäÈ»´ú±íµÄÊÇAI×´Ì¬»úÀïµÄ×´Ì¬,µ«ÊÇ½ö²¥·ÅÕâ¸ö×´Ì¬µÄ¶¯»­¶øÒÑ
+    /// è™½ç„¶ä»£è¡¨çš„æ˜¯AIçŠ¶æ€æœºé‡Œçš„çŠ¶æ€,ä½†æ˜¯ä»…æ’­æ”¾è¿™ä¸ªçŠ¶æ€çš„åŠ¨ç”»è€Œå·²
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int AiState {
@@ -8894,7 +8894,7 @@ namespace Protobuf.Room {
     public const int ActorIdFieldNumber = 3;
     private long actorId_;
     /// <summary>
-    /// Èç¹û¸ÄÎªÏÈ·¢ËÍ±¾ÏûÏ¢,µÈ´ı·şÎñÆ÷·µ»ØºóÔÙÖ´ĞĞÖ¸ÁîµÄ»°,Õâ¸ö±äÁ¿¾ÍÓĞÓÃÁË,ÔÚ·µ»Øºó¿ÉÒÔÕÒµ½±»Ö´ĞĞµÄµ¥Î»
+    /// å¦‚æœæ”¹ä¸ºå…ˆå‘é€æœ¬æ¶ˆæ¯,ç­‰å¾…æœåŠ¡å™¨è¿”å›åå†æ‰§è¡ŒæŒ‡ä»¤çš„è¯,è¿™ä¸ªå˜é‡å°±æœ‰ç”¨äº†,åœ¨è¿”å›åå¯ä»¥æ‰¾åˆ°è¢«æ‰§è¡Œçš„å•ä½
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public long ActorId {
@@ -9317,7 +9317,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ²É¼¯
+  /// é‡‡é›†
   /// </summary>
   public sealed partial class HarvestStart : pb::IMessage<HarvestStart> {
     private static readonly pb::MessageParser<HarvestStart> _parser = new pb::MessageParser<HarvestStart>(() => new HarvestStart());
@@ -9407,7 +9407,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
+    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -9421,7 +9421,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// ×ÊÔ´Ê£Óà
+    /// èµ„æºå‰©ä½™
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -9435,7 +9435,7 @@ namespace Protobuf.Room {
     public const int DurationTimeFieldNumber = 7;
     private float durationTime_;
     /// <summary>
-    /// ²É¼¯ÍêÈ«²¿ĞèÒªµÄÊ±¼ä
+    /// é‡‡é›†å®Œå…¨éƒ¨éœ€è¦çš„æ—¶é—´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public float DurationTime {
@@ -9714,7 +9714,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
+    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -9728,7 +9728,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// ×ÊÔ´Ê£Óà
+    /// èµ„æºå‰©ä½™
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -9742,7 +9742,7 @@ namespace Protobuf.Room {
     public const int DurationTimeFieldNumber = 7;
     private float durationTime_;
     /// <summary>
-    /// ²É¼¯ÍêÈ«²¿ĞèÒªµÄÊ±¼ä
+    /// é‡‡é›†å®Œå…¨éƒ¨éœ€è¦çš„æ—¶é—´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public float DurationTime {
@@ -10047,7 +10047,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
+    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -10061,7 +10061,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// ×ÊÔ´Ê£Óà
+    /// èµ„æºå‰©ä½™
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -10075,7 +10075,7 @@ namespace Protobuf.Room {
     public const int ResHarvestFieldNumber = 7;
     private int resHarvest_;
     /// <summary>
-    ///²É¼¯µ½µÄ×ÊÔ´
+    ///é‡‡é›†åˆ°çš„èµ„æº
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResHarvest {
@@ -10354,7 +10354,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
+    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -10368,7 +10368,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// ×ÊÔ´Ê£Óà
+    /// èµ„æºå‰©ä½™
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -10382,7 +10382,7 @@ namespace Protobuf.Room {
     public const int ResHarvestFieldNumber = 7;
     private int resHarvest_;
     /// <summary>
-    ///²É¼¯µ½µÄ×ÊÔ´
+    ///é‡‡é›†åˆ°çš„èµ„æº
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResHarvest {
@@ -10601,8 +10601,8 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// µ¥¶À±£´æ×ÊÔ´Êı¾İ,
-  /// ÕâÀï±£´æµÄÊÇµØÍ¼´´½¨ÒÔºó,¸Ä±äµÄ×ÊÔ´Êı¾İ.ÕâÖ»ÊÇÁÙÊ±µÄ...
+  /// å•ç‹¬ä¿å­˜èµ„æºæ•°æ®,
+  /// è¿™é‡Œä¿å­˜çš„æ˜¯åœ°å›¾åˆ›å»ºä»¥å,æ”¹å˜çš„èµ„æºæ•°æ®.è¿™åªæ˜¯ä¸´æ—¶çš„...
   /// </summary>
   public sealed partial class DownloadResCell : pb::IMessage<DownloadResCell> {
     private static readonly pb::MessageParser<DownloadResCell> _parser = new pb::MessageParser<DownloadResCell>(() => new DownloadResCell());
@@ -11208,7 +11208,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  ///Ë¢ĞÂ×ÊÔ´
+  ///åˆ·æ–°èµ„æº
   /// </summary>
   public sealed partial class UpdateRes : pb::IMessage<UpdateRes> {
     private static readonly pb::MessageParser<UpdateRes> _parser = new pb::MessageParser<UpdateRes>(() => new UpdateRes());
@@ -11637,7 +11637,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  ///Ë¢ĞÂĞĞ¶¯µã
+  ///åˆ·æ–°è¡ŒåŠ¨ç‚¹
   /// </summary>
   public sealed partial class UpdateActionPoint : pb::IMessage<UpdateActionPoint> {
     private static readonly pb::MessageParser<UpdateActionPoint> _parser = new pb::MessageParser<UpdateActionPoint>(() => new UpdateActionPoint());
@@ -12039,7 +12039,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ÖÕÓÚĞ´µ½Õ½¶·ÁË,ºğºğºğ
+  /// ç»ˆäºå†™åˆ°æˆ˜æ–—äº†,å¼å¼å¼
   /// </summary>
   public sealed partial class FightStart : pb::IMessage<FightStart> {
     private static readonly pb::MessageParser<FightStart> _parser = new pb::MessageParser<FightStart>(() => new FightStart());
@@ -12948,7 +12948,7 @@ namespace Protobuf.Room {
     public const int FightAgainFieldNumber = 6;
     private bool fightAgain_;
     /// <summary>
-    /// µ¯Ò©×ã¹»,ÔÙ´òÒ»ÂÖ
+    /// å¼¹è¯è¶³å¤Ÿ,å†æ‰“ä¸€è½®
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public bool FightAgain {
@@ -13177,7 +13177,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// ì­Ñª°É
+  /// é£™è¡€å§
   /// </summary>
   public sealed partial class SprayBlood : pb::IMessage<SprayBlood> {
     private static readonly pb::MessageParser<SprayBlood> _parser = new pb::MessageParser<SprayBlood>(() => new SprayBlood());

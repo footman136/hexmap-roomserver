@@ -105,7 +105,7 @@ public class RoomMsgReply
         var alreadyLoggedIn = ServerRoomManager.Instance.FindPlayerArgs(input.TokenId);
         if (alreadyLoggedIn != null)
         {
-            PlayerInfo oldPlayer = ServerRoomManager.Instance.GetPlayer(alreadyLoggedIn);
+            var oldPlayer = ServerRoomManager.Instance.GetPlayer(alreadyLoggedIn);
             if (oldPlayer != null)
             {
                 string roomName = "";
@@ -382,39 +382,49 @@ public class RoomMsgReply
             }
         }
 
-        if (roomLogic != null)
-        {
-            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
-            if (pi != null)
-            {
-                ret = true;
-                roomLogic.AddPlayerToRoom(_args, pi);
-                pi.RoomId = input.RoomId;
-                ServerRoomManager.Instance.SetPlayerInfo(_args, pi);
-
-                // 通知大厅
-                ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
-                
-                // 返回成功
-                EnterRoomReply output = new EnterRoomReply()
-                {
-                    Ret = true,
-                    RoomId = roomLogic.RoomId,
-                    RoomName = roomLogic.RoomName,
-                };
-                ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
-                ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM OK - Player enters the battlefield! Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}"); // 玩家进入战场！
-                return;
-            }
-            else
-            {
-                errMsg = "Player is not found!"; // 玩家没有找到！ 
-            }
-        }
-        else
+        PlayerInfo pi = null;
+        PlayerInfoInRoom piir = null;
+        if (roomLogic == null)
         {
             errMsg = $"Battlefield is not found! RoomId:{input.RoomId}"; // 战场没有找到！
         }
+        else
+        {
+            pi = ServerRoomManager.Instance.GetPlayer(_args);
+            if (pi == null)
+            {
+                errMsg = "PlayerInfo is not found!"; // 玩家没有找到！
+            }
+            else
+            {
+                pi.RoomId = input.RoomId;
+                piir = roomLogic.GetPlayerInRoom(pi.Enter.TokenId);
+                if (piir == null)
+                {
+                    errMsg = "PlayerInfoInRoom is not found!"; // 玩家没有找到！
+                }
+            }
+        }
+
+        if(piir != null)
+        {
+            // 把当前玩家设置为在线(所有玩家信息在房间创建的时候(RoomLogic.Init)就存在了, 只是不在线)
+            roomLogic.Online(pi.Enter.TokenId, _args, pi.Enter, input.RoomId);
+
+            // 通知大厅
+            ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
+            
+            // 返回成功
+            EnterRoomReply output = new EnterRoomReply()
+            {
+                Ret = true,
+                RoomId = roomLogic.RoomId,
+                RoomName = roomLogic.RoomName,
+            };
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.EnterRoomReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log($"MSG: ENTER_ROOM OK - Player enters the battlefield! Account:{pi.Enter.Account} - Room:{roomLogic.RoomName}"); // 玩家进入战场！
+        }
+        else
         {   // 返回失败
             EnterRoomReply output = new EnterRoomReply()
             {
@@ -434,12 +444,17 @@ public class RoomMsgReply
         RoomLogic roomLogic = ServerRoomManager.Instance.GetRoomLogic(input.RoomId);
         if (roomLogic != null)
         {
+            var pi = ServerRoomManager.Instance.GetPlayer(_args);
+            if (pi != null)
+            { // 把当前玩家在房间的状态设置为离线
+                roomLogic.Offline(pi.Enter.TokenId);
+                
+                string account = pi.Enter.Account;
+                ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - Player leaves the battlefield! Account:{account} - Room:{roomLogic.RoomName}"); // 玩家离开战场！
+            }
+
             // 通知大厅
             ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);
-            
-            string account = roomLogic.GetPlayerInRoom(_args)?.Enter.Account;
-            ServerRoomManager.Instance.Log($"MSG: LEAVE_ROOM OK - Player leaves the battlefield! Account:{account} - Room:{roomLogic.RoomName}"); // 玩家离开战场！
-            ServerRoomManager.Instance.RemovePlayer(_args, input.ReleaseIfNoUser);
             ret = true;
         }
         else
@@ -471,7 +486,7 @@ public class RoomMsgReply
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.DownloadCitiesReply, output.ToByteArray());
             return;
         }
-        PlayerInfo pi = roomLogic.GetPlayerInRoom(_args);
+        PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
         if (pi == null)
         {
             string msg = $"Current Player is not found!"; // 当前玩家没有找到
@@ -599,7 +614,7 @@ public class RoomMsgReply
         }
 
         {
-            PlayerInfo pi = roomLogic.GetPlayerInRoom(_args);
+            PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(_args);
             if (pi == null)
             {
                 string msg = $"当前玩家没有找到!";
@@ -614,7 +629,7 @@ public class RoomMsgReply
                 return;
             }
 
-            pi.IsReady = true; // 客户端准备好了,可以检测心跳
+            pi.IsReady = true; // 客户端准备好了,可以检测心跳了
             long OwnerId = pi.Enter.TokenId;
 
             {
