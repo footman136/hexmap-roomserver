@@ -502,7 +502,7 @@ public class RoomLogic
         var piir = GetPlayerInRoom(playerId);
         if (piir != null)
         {
-            return piir.IsOnline();
+            return piir.IsOnline;
         }
 
         return false;
@@ -549,7 +549,7 @@ public class RoomLogic
     {
         foreach (var keyPair in PlayersInRoom)
         {
-            if (keyPair.Value.IsOnline())
+            if (keyPair.Value.IsOnline)
             {
                 ServerRoomManager.Instance.SendMsg(keyPair.Value.Args, msgId, output);
             }

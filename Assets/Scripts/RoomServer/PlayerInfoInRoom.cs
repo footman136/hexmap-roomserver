@@ -41,7 +41,7 @@ namespace Actor
         public PlayerInfoInRoom()
         {
             Enter = new PlayerEnter();
-         }
+        }
 
         public void Online(SocketAsyncEventArgs args, PlayerEnter enter, long roomId)
         {
@@ -51,10 +51,7 @@ namespace Actor
             RoomId = roomId;
         }
 
-        public bool IsOnline()
-        {
-            return Args != null;
-        }
+        public bool IsOnline => Args != null;
 
         public void Offline()
         {
