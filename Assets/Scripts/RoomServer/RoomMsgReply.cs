@@ -96,10 +96,7 @@ public class RoomMsgReply
     private static void PLAYER_ENTER(byte[] bytes)
     {
         PlayerEnter input = PlayerEnter.Parser.ParseFrom(bytes);
-        PlayerInfo pi = new PlayerInfo(_args)
-        {
-            Enter = input,
-        };
+        PlayerInfo pi = new PlayerInfo(_args, input);
         
         //检测是否重复登录,如果发现曾经有人登录,则将前面的人踢掉
         var alreadyLoggedIn = ServerRoomManager.Instance.FindPlayerArgs(input.TokenId);
