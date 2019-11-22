@@ -50,6 +50,7 @@ namespace AI
         public int AiState;
         public long AiTargetId;
         public int AiCellIndexTo;
+        public float AiDurationTime;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -169,6 +170,7 @@ namespace AI
             bw.Write(AiState);
             bw.Write(AiTargetId);
             bw.Write(AiCellIndexTo);
+            bw.Write(AiDurationTime);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -203,6 +205,11 @@ namespace AI
                 AiState = br.ReadInt32();
                 AiTargetId = br.ReadInt64();
                 AiCellIndexTo = br.ReadInt32();
+            }
+
+            if (header >= 5)
+            {
+                AiDurationTime = br.ReadSingle();
             }
         }
         

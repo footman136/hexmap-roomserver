@@ -853,7 +853,7 @@ public class RoomLogic
         
         if (input.CellIndexFrom == 0)
         {
-            Debug.LogError("OnActorAiState Fuck!!! Actor position is lost!!!");
+            Debug.LogError("OnActorAiState Error! Actor position is lost!!!");
         }
         
         // 更新单元Ai信息,在服务器的ActorBehaviour里保存一份
@@ -865,6 +865,7 @@ public class RoomLogic
             ab.CellIndex = input.CellIndexFrom;
             ab.AiCellIndexTo = input.CellIndexTo;
             ab.Orientation = input.Orientation;
+            ab.AiDurationTime = input.DurationTime;
         }
         
         ActorAiStateReply output = new ActorAiStateReply()
@@ -877,7 +878,7 @@ public class RoomLogic
             CellIndexFrom = input.CellIndexFrom,
             CellIndexTo = input.CellIndexTo,
             Orientation = input.Orientation,
-            Speed = input.Speed,
+            DurationTime = input.DurationTime,
             Ret = true,
         };
         
@@ -891,7 +892,7 @@ public class RoomLogic
             return; // 不是自己房间的消息，略过
         if (input.CellIndex == 0)
         {
-            Debug.LogError("OnUpdateActorPos Fuck!!! Actor position is lost!!!");
+            Debug.LogError("OnUpdateActorPos Error! Actor position is lost!!!");
         }
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)

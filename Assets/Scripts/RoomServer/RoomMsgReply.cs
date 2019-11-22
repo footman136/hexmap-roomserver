@@ -593,8 +593,8 @@ public class RoomMsgReply
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
-            // 更新AI状态
-            ActorAiStateReply output2 = new ActorAiStateReply()
+            // 更新AI状态, 注: 尽管参数与ActorAiStateReply一样, 但是这里是高级AI状态
+            HighAiStateReply output2 = new HighAiStateReply()
             {
                 RoomId = ab.RoomId,
                 OwnerId = ab.OwnerId,
@@ -604,10 +604,10 @@ public class RoomMsgReply
                 CellIndexFrom = ab.CellIndex,
                 CellIndexTo = ab.AiCellIndexTo,
                 Orientation = ab.Orientation,
-                Speed = ab.Speed,
+                DurationTime = ab.AttackDuration,
                 Ret = true,
             };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAiStateReply, output2.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.HighAiStateReply, output2.ToByteArray());
         }
 
         {
