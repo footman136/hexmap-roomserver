@@ -242,11 +242,6 @@ public class ServerRoomManager : MonoBehaviour
             {
                 roomLogic = GetRoomLogic(pi.RoomId);
             }
-            if (roomLogic != null)
-            {
-                // 通知大厅
-                UpdateRoomInfoToLobby(roomLogic);
-            }
             
             Log($"MSG: DropAClient - User left the room-server - {Players[args].Enter.Account} - PlayerCount:{Players.Count-1}/{_server.MaxClientCount}"); // 玩家离开房间服务器 
             RemovePlayer(args, true);
@@ -311,6 +306,9 @@ public class ServerRoomManager : MonoBehaviour
         if (roomLogic.IsOnline(pi.Enter.TokenId))
         {
             roomLogic.Offline(pi.Enter.TokenId);
+            
+            // 通知大厅
+            UpdateRoomInfoToLobby(roomLogic);
         }
 
         // 最后看是否需要关闭房间

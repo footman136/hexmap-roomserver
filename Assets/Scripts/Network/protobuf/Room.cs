@@ -159,7 +159,11 @@ namespace Protobuf.Room {
             "ZBgBIAEoAxIPCgdPd25lcklkGAIgASgDEg8KB0FjdG9ySWQYAyABKAMSEAoI",
             "QW1tb0Jhc2UYBCABKAUiYgoPQW1tb1N1cHBseVJlcGx5Eg4KBlJvb21JZBgB",
             "IAEoAxIPCgdPd25lcklkGAIgASgDEg8KB0FjdG9ySWQYAyABKAMSEAoIQW1t",
-            "b0Jhc2UYBCABKAUSCwoDUmV0GAUgASgIYgZwcm90bzM="));
+            "b0Jhc2UYBCABKAUSCwoDUmV0GAUgASgIIjEKDkNoYW5nZUFpUmlnaHRzEg4K",
+            "BlJvb21JZBgBIAEoAxIPCgdPd25lcklkGAIgASgDIn4KE0NoYW5nZUFpUmln",
+            "aHRzUmVwbHkSDgoGUm9vbUlkGAEgASgDEg8KB093bmVySWQYAiABKAMSCwoD",
+            "UmV0GAMgASgIEhEKCUFpQWN0b3JJZBgEIAEoAxIRCglBaUFjY291bnQYBSAB",
+            "KAkSEwoLQ29udHJvbEJ5TWUYBiABKAhiBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -217,7 +221,9 @@ namespace Protobuf.Room {
             new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.SprayBlood), global::Protobuf.Room.SprayBlood.Parser, new[]{ "RoomId", "OwnerId", "ActorId", "Damage" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.SprayBloodReply), global::Protobuf.Room.SprayBloodReply.Parser, new[]{ "RoomId", "OwnerId", "ActorId", "Damage", "Ret" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.AmmoSupply), global::Protobuf.Room.AmmoSupply.Parser, new[]{ "RoomId", "OwnerId", "ActorId", "AmmoBase" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.AmmoSupplyReply), global::Protobuf.Room.AmmoSupplyReply.Parser, new[]{ "RoomId", "OwnerId", "ActorId", "AmmoBase", "Ret" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.AmmoSupplyReply), global::Protobuf.Room.AmmoSupplyReply.Parser, new[]{ "RoomId", "OwnerId", "ActorId", "AmmoBase", "Ret" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.ChangeAiRights), global::Protobuf.Room.ChangeAiRights.Parser, new[]{ "RoomId", "OwnerId" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Protobuf.Room.ChangeAiRightsReply), global::Protobuf.Room.ChangeAiRightsReply.Parser, new[]{ "RoomId", "OwnerId", "Ret", "AiActorId", "AiAccount", "ControlByMe" }, null, null, null, null)
           }));
     }
     #endregion
@@ -226,7 +232,7 @@ namespace Protobuf.Room {
   #region Messages
   /// <summary>
   //////////////////////////////////////////////////
-  /// å¿ƒè·³
+  /// ĞÄÌø
   /// </summary>
   public sealed partial class HeartBeat : pb::IMessage<HeartBeat> {
     private static readonly pb::MessageParser<HeartBeat> _parser = new pb::MessageParser<HeartBeat>(() => new HeartBeat());
@@ -331,7 +337,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ç©å®¶åˆšåˆšåŠ å…¥æœåŠ¡å™¨
+  /// Íæ¼Ò¸Õ¸Õ¼ÓÈë·şÎñÆ÷
   /// </summary>
   public sealed partial class PlayerEnter : pb::IMessage<PlayerEnter> {
     private static readonly pb::MessageParser<PlayerEnter> _parser = new pb::MessageParser<PlayerEnter>(() => new PlayerEnter());
@@ -621,7 +627,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ç©å®¶åœ¨å®¢æˆ·ç«¯åˆ›å»ºäº†åœ°å›¾ä»¥å,ä¸Šä¼ åˆ°æœåŠ¡å™¨è¿›è¡Œä¿å­˜
+  /// Íæ¼ÒÔÚ¿Í»§¶Ë´´½¨ÁËµØÍ¼ÒÔºó,ÉÏ´«µ½·şÎñÆ÷½øĞĞ±£´æ
   /// </summary>
   public sealed partial class UploadMap : pb::IMessage<UploadMap> {
     private static readonly pb::MessageParser<UploadMap> _parser = new pb::MessageParser<UploadMap>(() => new UploadMap());
@@ -1079,7 +1085,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// æ‰€æœ‰ç©å®¶è¿›å…¥æˆ¿é—´,éƒ½è¦ä»æœåŠ¡å™¨ä¸‹è½½æœåŠ¡å™¨æ•°æ®
+  /// ËùÓĞÍæ¼Ò½øÈë·¿¼ä,¶¼Òª´Ó·şÎñÆ÷ÏÂÔØ·şÎñÆ÷Êı¾İ
   /// </summary>
   public sealed partial class DownloadMap : pb::IMessage<DownloadMap> {
     private static readonly pb::MessageParser<DownloadMap> _parser = new pb::MessageParser<DownloadMap>(() => new DownloadMap());
@@ -1565,7 +1571,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// è¿›å…¥/ç¦»å¼€æˆ¿é—´
+  /// ½øÈë/Àë¿ª·¿¼ä
   /// </summary>
   public sealed partial class NetRoomInfo : pb::IMessage<NetRoomInfo> {
     private static readonly pb::MessageParser<NetRoomInfo> _parser = new pb::MessageParser<NetRoomInfo>(() => new NetRoomInfo());
@@ -2522,7 +2528,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// åŸå¸‚
+  /// ³ÇÊĞ
   /// </summary>
   public sealed partial class DownloadCities : pb::IMessage<DownloadCities> {
     private static readonly pb::MessageParser<DownloadCities> _parser = new pb::MessageParser<DownloadCities>(() => new DownloadCities());
@@ -3056,7 +3062,7 @@ namespace Protobuf.Room {
     public const int CreatorIdFieldNumber = 9;
     private long creatorId_;
     /// <summary>
-    ///bool IsCapital = 10; æ˜¯å¦æ˜¯éƒ½åŸï¼Œç”±æœåŠ¡å™¨æ¥ç®—ï¼Œæš‚æ—¶ä¸éœ€è¦å®¢æˆ·ç«¯æ¥ä¼ 
+    ///bool IsCapital = 10; ÊÇ·ñÊÇ¶¼³Ç£¬ÓÉ·şÎñÆ÷À´Ëã£¬ÔİÊ±²»ĞèÒª¿Í»§¶ËÀ´´«
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public long CreatorId {
@@ -4087,7 +4093,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// å•å…ƒ(éƒ¨é˜Ÿå’Œå»ºç­‘)
+  /// µ¥Ôª(²¿¶ÓºÍ½¨Öş)
   /// </summary>
   public sealed partial class DownloadActors : pb::IMessage<DownloadActors> {
     private static readonly pb::MessageParser<DownloadActors> _parser = new pb::MessageParser<DownloadActors>(() => new DownloadActors());
@@ -5603,7 +5609,7 @@ namespace Protobuf.Room {
     public const int DieTypeFieldNumber = 4;
     private int dieType_;
     /// <summary>
-    /// æ­»äº¡æ–¹å¼,0-æ™®é€šåˆ é™¤;1-æˆ˜æ–—è‡´æ­»
+    /// ËÀÍö·½Ê½,0-ÆÕÍ¨É¾³ı;1-Õ½¶·ÖÂËÀ
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int DieType {
@@ -7232,8 +7238,8 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// æ›´æ–°å•å…ƒçš„å±æ€§,
-  /// æ›´æ–°åæ ‡,å› ä¸ºæœåŠ¡å™¨ç›®å‰æ²¡æœ‰ä»»ä½•è®¡ç®—,è¿åæ ‡éƒ½è¦ä»å®¢æˆ·ç«¯ä¼ è¿‡æ¥,æ‰€ä»¥æœåŠ¡å™¨è¦é¢‘ç¹å¾—åˆ°æ›´æ–°,å¦åˆ™æ— æ³•ä¿å­˜ç©å®¶å½“å‰ä½ç½®
+  /// ¸üĞÂµ¥ÔªµÄÊôĞÔ,
+  /// ¸üĞÂ×ø±ê,ÒòÎª·şÎñÆ÷Ä¿Ç°Ã»ÓĞÈÎºÎ¼ÆËã,Á¬×ø±ê¶¼Òª´Ó¿Í»§¶Ë´«¹ıÀ´,ËùÒÔ·şÎñÆ÷ÒªÆµ·±µÃµ½¸üĞÂ,·ñÔòÎŞ·¨±£´æÍæ¼Òµ±Ç°Î»ÖÃ
   /// </summary>
   public sealed partial class UpdateActorPos : pb::IMessage<UpdateActorPos> {
     private static readonly pb::MessageParser<UpdateActorPos> _parser = new pb::MessageParser<UpdateActorPos>(() => new UpdateActorPos());
@@ -7533,7 +7539,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// è¿”å›æ¶ˆæ¯,ç›®å‰æ²¡æœ‰ç”¨,å› ä¸ºä¸Šä¼ åˆ°æœåŠ¡å™¨å°±å¯ä»¥äº†,ä¹Ÿä¸éœ€è¦é€šçŸ¥åˆ«äºº,åæ ‡åŒæ­¥çš„æ“ä½œ,æ˜¯AiStateChangeè´Ÿè´£å¤„ç†äº†
+  /// ·µ»ØÏûÏ¢,Ä¿Ç°Ã»ÓĞÓÃ,ÒòÎªÉÏ´«µ½·şÎñÆ÷¾Í¿ÉÒÔÁË,Ò²²»ĞèÒªÍ¨Öª±ğÈË,×ø±êÍ¬²½µÄ²Ù×÷,ÊÇAiStateChange¸ºÔğ´¦ÀíÁË
   /// </summary>
   public sealed partial class UpdateActorPosReply : pb::IMessage<UpdateActorPosReply> {
     private static readonly pb::MessageParser<UpdateActorPosReply> _parser = new pb::MessageParser<UpdateActorPosReply>(() => new UpdateActorPosReply());
@@ -7861,7 +7867,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// æ›´æ–°å…¶ä»–å±æ€§,æ¯”å¦‚è¡€é‡:Hp,AmmoBase
+  /// ¸üĞÂÆäËûÊôĞÔ,±ÈÈçÑªÁ¿:Hp,AmmoBase
   /// </summary>
   public sealed partial class UpdateActorInfo : pb::IMessage<UpdateActorInfo> {
     private static readonly pb::MessageParser<UpdateActorInfo> _parser = new pb::MessageParser<UpdateActorInfo>(() => new UpdateActorInfo());
@@ -8447,7 +8453,7 @@ namespace Protobuf.Room {
     public const int AiStateFieldNumber = 4;
     private int aiState_;
     /// <summary>
-    /// è™½ç„¶ä»£è¡¨çš„æ˜¯AIçŠ¶æ€æœºé‡Œçš„çŠ¶æ€,ä½†æ˜¯ä»…æ’­æ”¾è¿™ä¸ªçŠ¶æ€çš„åŠ¨ç”»è€Œå·²
+    /// ËäÈ»´ú±íµÄÊÇAI×´Ì¬»úÀïµÄ×´Ì¬,µ«ÊÇ½ö²¥·ÅÕâ¸ö×´Ì¬µÄ¶¯»­¶øÒÑ
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int AiState {
@@ -8894,7 +8900,7 @@ namespace Protobuf.Room {
     public const int ActorIdFieldNumber = 3;
     private long actorId_;
     /// <summary>
-    /// å¦‚æœæ”¹ä¸ºå…ˆå‘é€æœ¬æ¶ˆæ¯,ç­‰å¾…æœåŠ¡å™¨è¿”å›åå†æ‰§è¡ŒæŒ‡ä»¤çš„è¯,è¿™ä¸ªå˜é‡å°±æœ‰ç”¨äº†,åœ¨è¿”å›åå¯ä»¥æ‰¾åˆ°è¢«æ‰§è¡Œçš„å•ä½
+    /// Èç¹û¸ÄÎªÏÈ·¢ËÍ±¾ÏûÏ¢,µÈ´ı·şÎñÆ÷·µ»ØºóÔÙÖ´ĞĞÖ¸ÁîµÄ»°,Õâ¸ö±äÁ¿¾ÍÓĞÓÃÁË,ÔÚ·µ»Øºó¿ÉÒÔÕÒµ½±»Ö´ĞĞµÄµ¥Î»
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public long ActorId {
@@ -9317,7 +9323,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// é‡‡é›†
+  /// ²É¼¯
   /// </summary>
   public sealed partial class HarvestStart : pb::IMessage<HarvestStart> {
     private static readonly pb::MessageParser<HarvestStart> _parser = new pb::MessageParser<HarvestStart>(() => new HarvestStart());
@@ -9407,7 +9413,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
+    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -9421,7 +9427,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// èµ„æºå‰©ä½™
+    /// ×ÊÔ´Ê£Óà
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -9435,7 +9441,7 @@ namespace Protobuf.Room {
     public const int DurationTimeFieldNumber = 7;
     private float durationTime_;
     /// <summary>
-    /// é‡‡é›†å®Œå…¨éƒ¨éœ€è¦çš„æ—¶é—´
+    /// ²É¼¯ÍêÈ«²¿ĞèÒªµÄÊ±¼ä
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public float DurationTime {
@@ -9714,7 +9720,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
+    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -9728,7 +9734,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// èµ„æºå‰©ä½™
+    /// ×ÊÔ´Ê£Óà
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -9742,7 +9748,7 @@ namespace Protobuf.Room {
     public const int DurationTimeFieldNumber = 7;
     private float durationTime_;
     /// <summary>
-    /// é‡‡é›†å®Œå…¨éƒ¨éœ€è¦çš„æ—¶é—´
+    /// ²É¼¯ÍêÈ«²¿ĞèÒªµÄÊ±¼ä
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public float DurationTime {
@@ -10047,7 +10053,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
+    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -10061,7 +10067,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// èµ„æºå‰©ä½™
+    /// ×ÊÔ´Ê£Óà
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -10075,7 +10081,7 @@ namespace Protobuf.Room {
     public const int ResHarvestFieldNumber = 7;
     private int resHarvest_;
     /// <summary>
-    ///é‡‡é›†åˆ°çš„èµ„æº
+    ///²É¼¯µ½µÄ×ÊÔ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResHarvest {
@@ -10354,7 +10360,7 @@ namespace Protobuf.Room {
     public const int ResTypeFieldNumber = 5;
     private int resType_;
     /// <summary>
-    /// èµ„æºç§ç±»,å› ä¸ºæœåŠ¡å™¨ä»€ä¹ˆéƒ½ä¸çŸ¥é“,æ‰€ä»¥æ‰€æœ‰ä¿¡æ¯éƒ½ä»å®¢æˆ·ç«¯æ¥
+    /// ×ÊÔ´ÖÖÀà,ÒòÎª·şÎñÆ÷Ê²Ã´¶¼²»ÖªµÀ,ËùÒÔËùÓĞĞÅÏ¢¶¼´Ó¿Í»§¶ËÀ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResType {
@@ -10368,7 +10374,7 @@ namespace Protobuf.Room {
     public const int ResRemainFieldNumber = 6;
     private int resRemain_;
     /// <summary>
-    /// èµ„æºå‰©ä½™
+    /// ×ÊÔ´Ê£Óà
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResRemain {
@@ -10382,7 +10388,7 @@ namespace Protobuf.Room {
     public const int ResHarvestFieldNumber = 7;
     private int resHarvest_;
     /// <summary>
-    ///é‡‡é›†åˆ°çš„èµ„æº
+    ///²É¼¯µ½µÄ×ÊÔ´
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public int ResHarvest {
@@ -10601,8 +10607,8 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// å•ç‹¬ä¿å­˜èµ„æºæ•°æ®,
-  /// è¿™é‡Œä¿å­˜çš„æ˜¯åœ°å›¾åˆ›å»ºä»¥å,æ”¹å˜çš„èµ„æºæ•°æ®.è¿™åªæ˜¯ä¸´æ—¶çš„...
+  /// µ¥¶À±£´æ×ÊÔ´Êı¾İ,
+  /// ÕâÀï±£´æµÄÊÇµØÍ¼´´½¨ÒÔºó,¸Ä±äµÄ×ÊÔ´Êı¾İ.ÕâÖ»ÊÇÁÙÊ±µÄ...
   /// </summary>
   public sealed partial class DownloadResCell : pb::IMessage<DownloadResCell> {
     private static readonly pb::MessageParser<DownloadResCell> _parser = new pb::MessageParser<DownloadResCell>(() => new DownloadResCell());
@@ -11208,7 +11214,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  ///åˆ·æ–°èµ„æº
+  ///Ë¢ĞÂ×ÊÔ´
   /// </summary>
   public sealed partial class UpdateRes : pb::IMessage<UpdateRes> {
     private static readonly pb::MessageParser<UpdateRes> _parser = new pb::MessageParser<UpdateRes>(() => new UpdateRes());
@@ -11637,7 +11643,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  ///åˆ·æ–°è¡ŒåŠ¨ç‚¹
+  ///Ë¢ĞÂĞĞ¶¯µã
   /// </summary>
   public sealed partial class UpdateActionPoint : pb::IMessage<UpdateActionPoint> {
     private static readonly pb::MessageParser<UpdateActionPoint> _parser = new pb::MessageParser<UpdateActionPoint>(() => new UpdateActionPoint());
@@ -12039,7 +12045,7 @@ namespace Protobuf.Room {
 
   /// <summary>
   //////////////////////////////////////////////////
-  /// ç»ˆäºå†™åˆ°æˆ˜æ–—äº†,å¼å¼å¼
+  /// ÖÕÓÚĞ´µ½Õ½¶·ÁË,ºğºğºğ
   /// </summary>
   public sealed partial class FightStart : pb::IMessage<FightStart> {
     private static readonly pb::MessageParser<FightStart> _parser = new pb::MessageParser<FightStart>(() => new FightStart());
@@ -12948,7 +12954,7 @@ namespace Protobuf.Room {
     public const int FightAgainFieldNumber = 6;
     private bool fightAgain_;
     /// <summary>
-    /// å¼¹è¯è¶³å¤Ÿ,å†æ‰“ä¸€è½®
+    /// µ¯Ò©×ã¹»,ÔÙ´òÒ»ÂÖ
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     public bool FightAgain {
@@ -13177,7 +13183,7 @@ namespace Protobuf.Room {
   }
 
   /// <summary>
-  /// é£™è¡€å§
+  /// ì­Ñª°É
   /// </summary>
   public sealed partial class SprayBlood : pb::IMessage<SprayBlood> {
     private static readonly pb::MessageParser<SprayBlood> _parser = new pb::MessageParser<SprayBlood>(() => new SprayBlood());
@@ -14079,6 +14085,441 @@ namespace Protobuf.Room {
           }
           case 40: {
             Ret = input.ReadBool();
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  /// <summary>
+  //////////////////////////////////////////////////
+  /// Õâ¸öÏûÏ¢±È½ÏÌØÊâ, ÒòÎªÎÒÃÇµÄ²úÆ·ÔÚ·şÎñÆ÷¶ËÊÇÃ»ÓĞÈÎºÎÂß¼­ºÍAIµÄ, ½ö½öÊÇ×ª·¢ºÍ´æÈ¡µÄ×÷ÓÃ,
+  /// ËùÒÔÈç¹ûÍæ¼Ò²»ÔÚÏßµÄÊ±ºò, ËüµÄËùÓĞÂß¼­ºÍAI»á½»¸øÆäËûÍæ¼ÒµÄ¿Í»§¶ËÉÏ½øĞĞ¼ÆËã
+  /// ChangeAiRightsÕâ¸öÏûÏ¢ÆäÊµ²»»á±»ÓÃµ½, ÒòÎªËùÓĞ¸Ä±ä¶¼ÊÇ·şÎñÆ÷¶Ë¹ÜÀíµÄ, Ö»»áÓÉ·şÎñÆ÷Ïò¿Í»§¶Ë·¢³öChangeAiRightsReplyÏûÏ¢
+  /// </summary>
+  public sealed partial class ChangeAiRights : pb::IMessage<ChangeAiRights> {
+    private static readonly pb::MessageParser<ChangeAiRights> _parser = new pb::MessageParser<ChangeAiRights>(() => new ChangeAiRights());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<ChangeAiRights> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Protobuf.Room.RoomReflection.Descriptor.MessageTypes[55]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRights() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRights(ChangeAiRights other) : this() {
+      roomId_ = other.roomId_;
+      ownerId_ = other.ownerId_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRights Clone() {
+      return new ChangeAiRights(this);
+    }
+
+    /// <summary>Field number for the "RoomId" field.</summary>
+    public const int RoomIdFieldNumber = 1;
+    private long roomId_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public long RoomId {
+      get { return roomId_; }
+      set {
+        roomId_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "OwnerId" field.</summary>
+    public const int OwnerIdFieldNumber = 2;
+    private long ownerId_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public long OwnerId {
+      get { return ownerId_; }
+      set {
+        ownerId_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as ChangeAiRights);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(ChangeAiRights other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (RoomId != other.RoomId) return false;
+      if (OwnerId != other.OwnerId) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (RoomId != 0L) hash ^= RoomId.GetHashCode();
+      if (OwnerId != 0L) hash ^= OwnerId.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (RoomId != 0L) {
+        output.WriteRawTag(8);
+        output.WriteInt64(RoomId);
+      }
+      if (OwnerId != 0L) {
+        output.WriteRawTag(16);
+        output.WriteInt64(OwnerId);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (RoomId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(RoomId);
+      }
+      if (OwnerId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(OwnerId);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(ChangeAiRights other) {
+      if (other == null) {
+        return;
+      }
+      if (other.RoomId != 0L) {
+        RoomId = other.RoomId;
+      }
+      if (other.OwnerId != 0L) {
+        OwnerId = other.OwnerId;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 8: {
+            RoomId = input.ReadInt64();
+            break;
+          }
+          case 16: {
+            OwnerId = input.ReadInt64();
+            break;
+          }
+        }
+      }
+    }
+
+  }
+
+  public sealed partial class ChangeAiRightsReply : pb::IMessage<ChangeAiRightsReply> {
+    private static readonly pb::MessageParser<ChangeAiRightsReply> _parser = new pb::MessageParser<ChangeAiRightsReply>(() => new ChangeAiRightsReply());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pb::MessageParser<ChangeAiRightsReply> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Protobuf.Room.RoomReflection.Descriptor.MessageTypes[56]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRightsReply() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRightsReply(ChangeAiRightsReply other) : this() {
+      roomId_ = other.roomId_;
+      ownerId_ = other.ownerId_;
+      ret_ = other.ret_;
+      aiActorId_ = other.aiActorId_;
+      aiAccount_ = other.aiAccount_;
+      controlByMe_ = other.controlByMe_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public ChangeAiRightsReply Clone() {
+      return new ChangeAiRightsReply(this);
+    }
+
+    /// <summary>Field number for the "RoomId" field.</summary>
+    public const int RoomIdFieldNumber = 1;
+    private long roomId_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public long RoomId {
+      get { return roomId_; }
+      set {
+        roomId_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "OwnerId" field.</summary>
+    public const int OwnerIdFieldNumber = 2;
+    private long ownerId_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public long OwnerId {
+      get { return ownerId_; }
+      set {
+        ownerId_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "Ret" field.</summary>
+    public const int RetFieldNumber = 3;
+    private bool ret_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Ret {
+      get { return ret_; }
+      set {
+        ret_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "AiActorId" field.</summary>
+    public const int AiActorIdFieldNumber = 4;
+    private long aiActorId_;
+    /// <summary>
+    /// ±¾»ú¿ÉÒÔ¿ØÖÆË­?
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public long AiActorId {
+      get { return aiActorId_; }
+      set {
+        aiActorId_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "AiAccount" field.</summary>
+    public const int AiAccountFieldNumber = 5;
+    private string aiAccount_ = "";
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public string AiAccount {
+      get { return aiAccount_; }
+      set {
+        aiAccount_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    /// <summary>Field number for the "ControlByMe" field.</summary>
+    public const int ControlByMeFieldNumber = 6;
+    private bool controlByMe_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool ControlByMe {
+      get { return controlByMe_; }
+      set {
+        controlByMe_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override bool Equals(object other) {
+      return Equals(other as ChangeAiRightsReply);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public bool Equals(ChangeAiRightsReply other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (RoomId != other.RoomId) return false;
+      if (OwnerId != other.OwnerId) return false;
+      if (Ret != other.Ret) return false;
+      if (AiActorId != other.AiActorId) return false;
+      if (AiAccount != other.AiAccount) return false;
+      if (ControlByMe != other.ControlByMe) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (RoomId != 0L) hash ^= RoomId.GetHashCode();
+      if (OwnerId != 0L) hash ^= OwnerId.GetHashCode();
+      if (Ret != false) hash ^= Ret.GetHashCode();
+      if (AiActorId != 0L) hash ^= AiActorId.GetHashCode();
+      if (AiAccount.Length != 0) hash ^= AiAccount.GetHashCode();
+      if (ControlByMe != false) hash ^= ControlByMe.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void WriteTo(pb::CodedOutputStream output) {
+      if (RoomId != 0L) {
+        output.WriteRawTag(8);
+        output.WriteInt64(RoomId);
+      }
+      if (OwnerId != 0L) {
+        output.WriteRawTag(16);
+        output.WriteInt64(OwnerId);
+      }
+      if (Ret != false) {
+        output.WriteRawTag(24);
+        output.WriteBool(Ret);
+      }
+      if (AiActorId != 0L) {
+        output.WriteRawTag(32);
+        output.WriteInt64(AiActorId);
+      }
+      if (AiAccount.Length != 0) {
+        output.WriteRawTag(42);
+        output.WriteString(AiAccount);
+      }
+      if (ControlByMe != false) {
+        output.WriteRawTag(48);
+        output.WriteBool(ControlByMe);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public int CalculateSize() {
+      int size = 0;
+      if (RoomId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(RoomId);
+      }
+      if (OwnerId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(OwnerId);
+      }
+      if (Ret != false) {
+        size += 1 + 1;
+      }
+      if (AiActorId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(AiActorId);
+      }
+      if (AiAccount.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(AiAccount);
+      }
+      if (ControlByMe != false) {
+        size += 1 + 1;
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(ChangeAiRightsReply other) {
+      if (other == null) {
+        return;
+      }
+      if (other.RoomId != 0L) {
+        RoomId = other.RoomId;
+      }
+      if (other.OwnerId != 0L) {
+        OwnerId = other.OwnerId;
+      }
+      if (other.Ret != false) {
+        Ret = other.Ret;
+      }
+      if (other.AiActorId != 0L) {
+        AiActorId = other.AiActorId;
+      }
+      if (other.AiAccount.Length != 0) {
+        AiAccount = other.AiAccount;
+      }
+      if (other.ControlByMe != false) {
+        ControlByMe = other.ControlByMe;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    public void MergeFrom(pb::CodedInputStream input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 8: {
+            RoomId = input.ReadInt64();
+            break;
+          }
+          case 16: {
+            OwnerId = input.ReadInt64();
+            break;
+          }
+          case 24: {
+            Ret = input.ReadBool();
+            break;
+          }
+          case 32: {
+            AiActorId = input.ReadInt64();
+            break;
+          }
+          case 42: {
+            AiAccount = input.ReadString();
+            break;
+          }
+          case 48: {
+            ControlByMe = input.ReadBool();
             break;
           }
         }

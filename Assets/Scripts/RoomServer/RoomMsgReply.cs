@@ -406,7 +406,7 @@ public class RoomMsgReply
         if(piir != null)
         {
             // 把当前玩家设置为在线(所有玩家信息在房间创建的时候(RoomLogic.Init)就存在了, 只是不在线)
-            roomLogic.Online(pi.Enter.TokenId, _args, pi.Enter, input.RoomId);
+            roomLogic.Online(_args, pi.Enter, input.RoomId);
 
             // 通知大厅
             ServerRoomManager.Instance.UpdateRoomInfoToLobby(roomLogic);

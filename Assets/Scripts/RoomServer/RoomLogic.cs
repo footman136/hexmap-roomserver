@@ -11,6 +11,7 @@ using Protobuf.Room;
 using UnityEngine;
 using Actor;
 using AI;
+using UnityEngine.Assertions.Must;
 
 public class RoomLogic
 {
@@ -448,9 +449,9 @@ public class RoomLogic
     
     #region 玩家
     
-    public void Online(long playerId, SocketAsyncEventArgs args, PlayerEnter enter, long roomId)
+    public void Online(SocketAsyncEventArgs args, PlayerEnter enter, long roomId)
     {
-        var piir = GetPlayerInRoom(playerId);
+        var piir = GetPlayerInRoom(enter.TokenId);
         if (piir == null)
         { // 如果房间里实际没有这个玩家(的存盘), 则表明这是一个新用户, 要从表格中读取初始数据
             piir = new PlayerInfoInRoom();
@@ -466,7 +467,7 @@ public class RoomLogic
             piir.AddActionPoint(actionPointMax);
             piir.TimeSinceLastSave = DateTime.Now.ToFileTime();
             piir.TimeSinceLastRestoreActionPoint = 0;
-            PlayersInRoom[playerId] = piir;
+            PlayersInRoom[enter.TokenId] = piir;
         }
         // 把本玩家记录到Room的Redis里, 便于以后查找, 这里保存的就是房间内所有的玩家的id
         AddPlayerIdToRedis(piir);
@@ -476,6 +477,54 @@ public class RoomLogic
 
         // 玩家进入以后,根据该玩家[离开游戏]的时间,到[现在]的时间差(秒),计算出应该恢复多少的行动点数, 一次性恢复之
         piir.RestoreActionPointAfterLoading();
+        
+        // 这段逻辑很重要: 这是要把所有房间内的玩家的代理权限交给第一个进入房间的玩家, 以后, 如果这些玩家也上线了, 则把代理权交还给真正的玩家
+        // 这是因为, 服务器并没有对这些玩家的逻辑进行AI处理, 而是由客户端自己来控制自己的.
+        // 未来, 如果服务器要把AI代理权限收回来,这些地方都要做修改.
+        if(piir.AiRights == 0 || piir.AiRights != piir.Enter.TokenId)
+        { // 我之前曾经被别人代理过, 把代理权收回来
+            var piirAi = GetPlayerInRoom(piir.AiRights);
+            if (piirAi != null && piirAi.IsOnline)
+            {
+                piir.AiRights = piir.Enter.TokenId;
+                ChangeAiRightsReply output = new ChangeAiRightsReply()
+                {
+                    RoomId = piirAi.RoomId,
+                    OwnerId = piirAi.Enter.TokenId,
+                    AiActorId = piir.Enter.TokenId,
+                    AiAccount = piir.Enter.Account,
+                    ControlByMe = false,
+                    Ret = true,
+                };
+                ServerRoomManager.Instance.SendMsg(piirAi.Args, ROOM_REPLY.ChangeAiRightsReply, output.ToByteArray());
+                ServerRoomManager.Instance.Log($"RoomLogic Online OK - AI Rights of {piir.Enter.TokenId} is no longer controlled by {piir.Enter.Account}");
+            }
+            else
+            {
+                ServerRoomManager.Instance.Log($"RoomLogic Online Error - When trying to handle the AI controlled rights, the original player is offline! {piir.Enter.Account} - {piir.Enter.Account}");
+            }
+        }
+        
+        // 遍历所有玩家, 把所有: AI没有被代理, 且不在线的玩家, 权限都给它. 这种情况仅发生在第一个进入的玩家
+        foreach (var keyValue in PlayersInRoom)
+        {
+            var piirAi = keyValue.Value;
+            if (piirAi.AiRights == 0)
+            { // 我自己不需要发送此消息, 我自己的AiRights此时肯定不是0了
+                piirAi.AiRights = piir.Enter.TokenId;
+                ChangeAiRightsReply output = new ChangeAiRightsReply()
+                {
+                    RoomId = piir.RoomId,
+                    OwnerId = piir.Enter.TokenId,
+                    AiActorId = piirAi.Enter.TokenId,
+                    AiAccount = piirAi.Enter.Account,
+                    ControlByMe = true,
+                    Ret = true,
+                };
+                ServerRoomManager.Instance.SendMsg(piir.Args, ROOM_REPLY.ChangeAiRightsReply, output.ToByteArray());
+                ServerRoomManager.Instance.Log($"RoomLogic Online OK - AI Rights of {piirAi.Enter.Account} belongs to {piir.Enter.Account} now!" );
+            }
+        }
 
         _curPlayerCount = PlayersInRoom.Count;
         ServerRoomManager.Instance.Log($"RoomLogic Online OK - Player entered the battlefield! Player:{piir.Enter.Account}"); // 玩家进入战场
@@ -493,6 +542,54 @@ public class RoomLogic
         // 玩家下线
         piir.Offline();
         
+        // 把本玩家的代理权交给别的在线玩家, 除非我已经是最后一个了, 就不做任何处理了
+        // 找到一个仍然在线的玩家
+        PlayerInfoInRoom piirOnline = null;
+        foreach (var keyValue in PlayersInRoom)
+        {
+            var piirOther = keyValue.Value;
+            if (piirOther.IsOnline)
+            {
+                piirOnline = piirOther;
+            }
+        }
+        if(piirOnline != null)
+        { // 不仅是自己, 而且是把所有自己管理的AiRights, 都交给对方 
+            foreach (var keyValue in PlayersInRoom)
+            {
+                var piirAi = keyValue.Value;
+                if(piirAi.AiRights == piir.Enter.TokenId)
+                {
+                    piirAi.AiRights = piirOnline.Enter.TokenId;
+                    ChangeAiRightsReply output = new ChangeAiRightsReply()
+                    {
+                        RoomId = piirOnline.RoomId,
+                        OwnerId = piirOnline.Enter.TokenId,
+                        AiActorId = piirAi.Enter.TokenId,
+                        AiAccount = piirAi.Enter.Account,
+                        ControlByMe = true,
+                        Ret = true,
+                    };
+                    ServerRoomManager.Instance.SendMsg(piirOnline.Args, ROOM_REPLY.ChangeAiRightsReply,
+                        output.ToByteArray());
+                    ServerRoomManager.Instance.Log($"RoomLogic Offline OK - AI Rights of {piirAi.Enter.Account} belongs to {piirOnline.Enter.Account}");
+                }
+            }
+        }
+        else
+        { // 如果我是最后一个玩家, 则把所有人的 AI Rights 改为0
+            foreach (var keyValue in PlayersInRoom)
+            {
+                var piirAi = keyValue.Value;
+                if (piirAi.AiRights != piir.Enter.TokenId)
+                {
+                    ServerRoomManager.Instance.Log($"RoomLogic Offline Error - I am the last one in the room. But the AI Rights of {piirAi.Enter.Account} belongs to someone else {piirAi.AiRights} - MyName:{piir.Enter.Account}");
+                }
+                piirAi.AiRights = 0;
+                ServerRoomManager.Instance.Log($"RoomLogic Offline OK - AI Rights of {piirAi.Enter.Account} belongs to nobody! There is no player in the room.");
+            }
+        }
+
         _curPlayerCount = PlayersInRoom.Count;
         ServerRoomManager.Instance.Log($"RoomLogic Offline OK - Player left the battlefield! Player:{piir.Enter.Account}"); // 玩家离开战场
     }
@@ -646,7 +743,7 @@ public class RoomLogic
 
         var piir = GetPlayerInRoom(args);
 
-        if (piir != null)
+        if (piir == null)
         {
             ActorAddReply output = new ActorAddReply()
             {
