@@ -35,7 +35,8 @@ public class RoomLogic
     public string RoomName => _roomName;
     public long RoomId => _roomId;
     public int MaxPlayerCount => _maxPlayerCount;
-    public int CurPlayerCount => PlayersInRoom.Count;
+    // 房间内所有玩家的数量, 如果想得到在线玩家的数量, 要用CurPlayerCount
+    public int TotalPlayerCount => PlayersInRoom.Count;
     public long Creator => _creator;
 
     #region 初始化
@@ -130,6 +131,24 @@ public class RoomLogic
             pi?.Tick();
         }
 
+    }
+
+    public int CurPlayerCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (var keyValue in PlayersInRoom)
+            {
+                var piirOther = keyValue.Value;
+                if (piirOther.IsOnline)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
     }
 
     #endregion
@@ -866,6 +885,7 @@ public class RoomLogic
             ab.AiCellIndexTo = input.CellIndexTo;
             ab.Orientation = input.Orientation;
             ab.AiDurationTime = input.DurationTime;
+            ab.AiStartTime = DateTime.Now; // 记录得到当前状态的时间, 在存盘的时候再记录一下时间, 把剩余时间保存起来
         }
         
         ActorAiStateReply output = new ActorAiStateReply()

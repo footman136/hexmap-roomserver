@@ -51,6 +51,7 @@ namespace AI
         public long AiTargetId;
         public int AiCellIndexTo;
         public float AiDurationTime;
+        public DateTime AiStartTime;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -170,6 +171,17 @@ namespace AI
             bw.Write(AiState);
             bw.Write(AiTargetId);
             bw.Write(AiCellIndexTo);
+            if (AiDurationTime > 0)
+            {
+                AiDurationTime -= (float) (DateTime.Now - AiStartTime).TotalSeconds;
+            }
+
+            if (AiDurationTime < 0)
+            {
+                ServerRoomManager.Instance.Log($"ActorBehaviour Save Buffer Error - AiDurationTime is less than 0 - Name:{Name} - Time:{AiDurationTime}");
+                AiDurationTime = 0;
+            }
+
             bw.Write(AiDurationTime);
         }
 
@@ -209,7 +221,11 @@ namespace AI
 
             if (header >= 5)
             {
+                // 开始时间从读盘时重新计算, 这样玩家下次登录以后, 得到的时间差, 都是在线的时间
+                // 玩家离线的时间不计算在内, 如果要想把离线时间也计算在内, 需要在存盘的时候, 把存盘时间记录下来, 
+                // 然后读盘的时候读取到AiStartTime里
                 AiDurationTime = br.ReadSingle();
+                AiStartTime = DateTime.Now; 
             }
         }
         

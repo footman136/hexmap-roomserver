@@ -560,7 +560,7 @@ public class RoomMsgReply
             
             if (ab.CellIndex == 0)
             {
-                Debug.LogError("DOWNLOAD_ACTORS Fuck!!! Actor position is lost!!!");
+                Debug.LogError("DOWNLOAD_ACTORS Erro - Actor position is lost!!!");
                 continue;
             }
             
@@ -593,7 +593,18 @@ public class RoomMsgReply
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
+            
             // 更新AI状态, 注: 尽管参数与ActorAiStateReply一样, 但是这里是高级AI状态
+            if (ab.AiDurationTime > 0)
+            {
+                ab.AiDurationTime -= (float) (DateTime.Now - ab.AiStartTime).TotalSeconds;
+                if (ab.AiDurationTime < 0f)
+                {
+                    ServerRoomManager.Instance.Log($"RoomMsgReply DOWNLOAD_ACTORS Error - AiDurationTime is less than 0 - Name:{ab.Name} - Time:{ab.AiDurationTime}");
+                    ab.AiDurationTime = 0f;
+                }
+            }
+
             HighAiStateReply output2 = new HighAiStateReply()
             {
                 RoomId = ab.RoomId,
@@ -604,7 +615,7 @@ public class RoomMsgReply
                 CellIndexFrom = ab.CellIndex,
                 CellIndexTo = ab.AiCellIndexTo,
                 Orientation = ab.Orientation,
-                DurationTime = ab.AttackDuration,
+                DurationTime = ab.AiDurationTime,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.HighAiStateReply, output2.ToByteArray());
