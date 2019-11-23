@@ -50,8 +50,9 @@ namespace AI
         public int AiState;
         public long AiTargetId;
         public int AiCellIndexTo;
-        public float AiDurationTime;
-        public DateTime AiStartTime;
+        public float AiTotalTime; // 原始的总的持续时间
+        public float AiDurationTime; // 剩余的时间
+        public DateTime AiStartTime; // 本AI状态开始的时间
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -183,6 +184,7 @@ namespace AI
             }
 
             bw.Write(AiDurationTime);
+            bw.Write(AiTotalTime);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -226,6 +228,15 @@ namespace AI
                 // 然后读盘的时候读取到AiStartTime里
                 AiDurationTime = br.ReadSingle();
                 AiStartTime = DateTime.Now; 
+            }
+
+            if (header >= 6)
+            {
+                AiTotalTime = br.ReadSingle();
+            }
+            else
+            {
+                AiTotalTime = AiDurationTime;
             }
         }
         

@@ -616,6 +616,7 @@ public class RoomMsgReply
                 CellIndexTo = ab.AiCellIndexTo,
                 Orientation = ab.Orientation,
                 DurationTime = ab.AiDurationTime,
+                TotalTime = ab.AiTotalTime,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.HighAiStateReply, output2.ToByteArray());

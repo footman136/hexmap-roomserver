@@ -886,6 +886,7 @@ public class RoomLogic
             ab.Orientation = input.Orientation;
             ab.AiDurationTime = input.DurationTime;
             ab.AiStartTime = DateTime.Now; // 记录得到当前状态的时间, 在存盘的时候再记录一下时间, 把剩余时间保存起来
+            ab.AiTotalTime = input.TotalTime;
         }
         
         ActorAiStateReply output = new ActorAiStateReply()
@@ -899,6 +900,7 @@ public class RoomLogic
             CellIndexTo = input.CellIndexTo,
             Orientation = input.Orientation,
             DurationTime = input.DurationTime,
+            TotalTime = input.TotalTime,
             Ret = true,
         };
         
