@@ -76,6 +76,7 @@ public class RoomLogic
         MsgDispatcher.RegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorMove, OnActorMove);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorAiState, OnActorAiState);
+        MsgDispatcher.RegisterMsg((int)ROOM.ActorAiStateHigh, OnActorAiStateHigh);
         MsgDispatcher.RegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
         MsgDispatcher.RegisterMsg((int)ROOM.ActorPlayAni, OnActorPlayAni);
         MsgDispatcher.RegisterMsg((int)ROOM.TryCommand, OnTryCommand);
@@ -87,6 +88,7 @@ public class RoomLogic
         
         MsgDispatcher.RegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.RegisterMsg((int)ROOM.FightStop, OnFightStop);
+        
     }
 
     public void RemoveListener()
@@ -98,6 +100,7 @@ public class RoomLogic
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorRemove, OnActorRemove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorMove, OnActorMove);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorAiState, OnActorAiState);
+        MsgDispatcher.UnRegisterMsg((int)ROOM.ActorAiStateHigh, OnActorAiStateHigh);
         MsgDispatcher.UnRegisterMsg((int)ROOM.UpdateActorPos, OnUpdateActorPos);
         MsgDispatcher.UnRegisterMsg((int)ROOM.ActorPlayAni, OnActorPlayAni);
         MsgDispatcher.UnRegisterMsg((int)ROOM.TryCommand, OnTryCommand);
@@ -109,6 +112,7 @@ public class RoomLogic
         
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStart, OnFightStart);
         MsgDispatcher.UnRegisterMsg((int)ROOM.FightStop, OnFightStop);
+        
     }
 
     private const float _TIME_INTERVAL_SAVE = 600f; // 每隔5分钟存盘一次
@@ -360,7 +364,7 @@ public class RoomLogic
         byte[] playerBytes = ServerRoomManager.Instance.Redis.CSRedis.HGet<byte[]>(tableName, keyName);
         if (playerBytes == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist!It is not an error if it is a new battlefiled! - Player:{piir.Enter.Account} - Key:{keyName}");//  如果是新战场则不是错误!
+            ServerRoomManager.Instance.Log($"RoomLogic LoadPlayer Error - Player Data not found in Redist! It is not an error if it is a new battlefiled! - Player:{piir.Enter.Account} - Key:{keyName}");//  如果是新战场则不是错误!
             return false;
         }
 
@@ -510,7 +514,7 @@ public class RoomLogic
                 {
                     RoomId = piirAi.RoomId,
                     OwnerId = piirAi.Enter.TokenId,
-                    AiActorId = piir.Enter.TokenId,
+                    AiPlayerId = piir.Enter.TokenId,
                     AiAccount = piir.Enter.Account,
                     ControlByMe = false,
                     Ret = true,
@@ -535,7 +539,7 @@ public class RoomLogic
                 {
                     RoomId = piir.RoomId,
                     OwnerId = piir.Enter.TokenId,
-                    AiActorId = piirAi.Enter.TokenId,
+                    AiPlayerId = piirAi.Enter.TokenId,
                     AiAccount = piirAi.Enter.Account,
                     ControlByMe = true,
                     Ret = true,
@@ -584,7 +588,7 @@ public class RoomLogic
                     {
                         RoomId = piirOnline.RoomId,
                         OwnerId = piirOnline.Enter.TokenId,
-                        AiActorId = piirAi.Enter.TokenId,
+                        AiPlayerId = piirAi.Enter.TokenId,
                         AiAccount = piirAi.Enter.Account,
                         ControlByMe = true,
                         Ret = true,
@@ -907,6 +911,41 @@ public class RoomLogic
         BroadcastMsg(ROOM_REPLY.ActorAiStateReply, output.ToByteArray());
     }
 
+    private void OnActorAiStateHigh(SocketAsyncEventArgs args, byte[] bytes)
+    {
+        ActorAiStateHigh input = ActorAiStateHigh.Parser.ParseFrom(bytes);
+        if (input.RoomId != RoomId)
+            return; // 不是自己房间的消息，略过
+        
+        // 更新单元Ai信息,在服务器的ActorBehaviour里保存一份
+        var ab = ActorManager.GetActor(input.ActorId);
+        if (ab != null)
+        {
+            ab.HighAiState = input.HighAiState;
+            ab.HighAiTargetId = input.HighTargetId;
+            ab.HighAiCellIndexTo = input.HighAiCellIndexTo;
+        
+            ActorAiStateHighReply output2 = new ActorAiStateHighReply()
+            {
+                RoomId = ab.RoomId,
+                OwnerId = ab.OwnerId,
+                ActorId = ab.ActorId,
+                State = ab.AiState,
+                TargetId = ab.AiTargetId,
+                CellIndexFrom = ab.CellIndex,
+                CellIndexTo = ab.AiCellIndexTo,
+                Orientation = ab.Orientation,
+                DurationTime = ab.AiDurationTime,
+                TotalTime = ab.AiTotalTime,
+                HighAiState = ab.HighAiState,
+                HighAiTargetId = ab.HighAiTargetId,
+                HighAiCellIndexTo = ab.HighAiCellIndexTo,
+                Ret = true,
+            };
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());
+        }
+    }
+
     private void OnUpdateActorPos(SocketAsyncEventArgs args, byte[] bytes)
     {
         UpdateActorPos input = UpdateActorPos.Parser.ParseFrom(bytes);
@@ -1114,6 +1153,7 @@ public class RoomLogic
             Iron = piir.Iron,
         };
         ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.UpdateResReply, output2.ToByteArray());
+        
     }
 
     private void OnUpdateRes(SocketAsyncEventArgs args, byte[] bytes)
@@ -1121,8 +1161,9 @@ public class RoomLogic
         UpdateRes input = UpdateRes.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfoInRoom piir = GetPlayerInRoom(args);
-        if (piir == null || piir.Enter.TokenId != input.OwnerId)
+        // 注意: piir不见得是自己, 可能是任何玩家
+        PlayerInfoInRoom piir = GetPlayerInRoom(input.OwnerId);
+        if (piir == null )
         {
             ServerRoomManager.Instance.Log($"RoomLogic OnUpdateRes Error - player not found!{input.OwnerId}");
             return;

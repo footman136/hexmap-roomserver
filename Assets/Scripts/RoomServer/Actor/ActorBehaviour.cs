@@ -53,6 +53,11 @@ namespace AI
         public float AiTotalTime; // 原始的总的持续时间
         public float AiDurationTime; // 剩余的时间
         public DateTime AiStartTime; // 本AI状态开始的时间
+        
+        // High AI params
+        public int HighAiState;
+        public long HighAiTargetId;
+        public int HighAiCellIndexTo;
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -185,6 +190,9 @@ namespace AI
 
             bw.Write(AiDurationTime);
             bw.Write(AiTotalTime);
+            bw.Write(HighAiState);
+            bw.Write(HighAiCellIndexTo);
+            bw.Write(HighAiTargetId);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -237,6 +245,13 @@ namespace AI
             else
             {
                 AiTotalTime = AiDurationTime;
+            }
+
+            if (header >= 7)
+            { // 读取高级AI存盘数据, AI-代理权
+                HighAiState = br.ReadInt32();
+                HighAiCellIndexTo = br.ReadInt32();
+                HighAiTargetId = br.ReadInt64();
             }
         }
         

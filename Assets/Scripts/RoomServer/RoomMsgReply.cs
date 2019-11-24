@@ -399,6 +399,8 @@ public class RoomMsgReply
                 if (piir == null)
                 {
                     errMsg = "PlayerInfoInRoom is not found!"; // 玩家没有找到！
+                    roomLogic.Online(_args, pi.Enter, pi.RoomId);
+                    piir = roomLogic.GetPlayerInRoom(pi.Enter.TokenId);
                 }
             }
         }
@@ -605,7 +607,7 @@ public class RoomMsgReply
                 }
             }
 
-            HighAiStateReply output2 = new HighAiStateReply()
+            ActorAiStateHighReply output2 = new ActorAiStateHighReply()
             {
                 RoomId = ab.RoomId,
                 OwnerId = ab.OwnerId,
@@ -617,9 +619,12 @@ public class RoomMsgReply
                 Orientation = ab.Orientation,
                 DurationTime = ab.AiDurationTime,
                 TotalTime = ab.AiTotalTime,
+                HighAiState = ab.HighAiState,
+                HighAiTargetId = ab.HighAiTargetId,
+                HighAiCellIndexTo = ab.HighAiCellIndexTo,
                 Ret = true,
             };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.HighAiStateReply, output2.ToByteArray());
+            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());
         }
 
         {
