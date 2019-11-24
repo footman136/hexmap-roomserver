@@ -816,7 +816,7 @@ MonoBehaviour:
   CurRoomCount: 0
   MaxPlayerPerRoom: 0
   MaxActionPoint: 0
-  IsCheckHeartBeat: 1
+  IsCheckHeartBeat: 0
 --- !u!4 &1882277145
 Transform:
   m_ObjectHideFlags: 0
