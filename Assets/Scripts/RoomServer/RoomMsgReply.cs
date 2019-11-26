@@ -597,13 +597,13 @@ public class RoomMsgReply
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
             
             // 更新AI状态, 注: 尽管参数与ActorAiStateReply一样, 但是这里是高级AI状态
-            if (ab.AiDurationTime > 0)
+            if (ab.HighAiDurationTime > 0)
             {
-                ab.AiDurationTime -= (float) (DateTime.Now - ab.AiStartTime).TotalSeconds;
-                if (ab.AiDurationTime < 0f)
+                ab.HighAiDurationTime -= (float) (DateTime.Now - ab.HighAiStartTime).TotalSeconds;
+                if (ab.HighAiDurationTime < 0f)
                 {
-                    ServerRoomManager.Instance.Log($"RoomMsgReply DOWNLOAD_ACTORS Error - AiDurationTime is less than 0 - Name:{ab.Name} - Time:{ab.AiDurationTime}");
-                    ab.AiDurationTime = 0f;
+                    ServerRoomManager.Instance.Log($"RoomMsgReply DOWNLOAD_ACTORS Error - HighAiDurationTime is less than 0 - Name:{ab.Name} - Time:{ab.HighAiDurationTime}");
+                    ab.HighAiDurationTime = 0f;
                 }
             }
 
@@ -612,16 +612,11 @@ public class RoomMsgReply
                 RoomId = ab.RoomId,
                 OwnerId = ab.OwnerId,
                 ActorId = ab.ActorId,
-                State = ab.AiState,
-                TargetId = ab.AiTargetId,
-                CellIndexFrom = ab.CellIndex,
-                CellIndexTo = ab.AiCellIndexTo,
-                Orientation = ab.Orientation,
-                DurationTime = ab.AiDurationTime,
-                TotalTime = ab.AiTotalTime,
                 HighAiState = ab.HighAiState,
                 HighAiTargetId = ab.HighAiTargetId,
                 HighAiCellIndexTo = ab.HighAiCellIndexTo,
+                HighAiDurationTime = ab.HighAiDurationTime,
+                HighAiTotalTime = ab.HighAiTotalTime,
                 Ret = true,
             };
             ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());

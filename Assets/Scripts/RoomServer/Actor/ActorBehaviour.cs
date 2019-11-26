@@ -55,9 +55,13 @@ namespace AI
         public DateTime AiStartTime; // 本AI状态开始的时间
         
         // High AI params
+        // 高级AI
         public int HighAiState;
         public long HighAiTargetId;
         public int HighAiCellIndexTo;
+        public float HighAiDurationTime;
+        public float HighAiTotalTime;
+        public DateTime HighAiStartTime; // 本AI状态开始的时间
 
         //This specific animal stats asset, create a new one from the asset menu under (LowPolyAnimals/NewAnimalStats)
         private ActorStats ScriptableActorStats;
@@ -173,26 +177,38 @@ namespace AI
             bw.Write(AmmoBase);
             bw.Write(AmmoBaseMax);
             
-            // AI state params
-            bw.Write(AiState);
-            bw.Write(AiTargetId);
-            bw.Write(AiCellIndexTo);
-            if (AiDurationTime > 0)
-            {
-                AiDurationTime -= (float) (DateTime.Now - AiStartTime).TotalSeconds;
-            }
-
-            if (AiDurationTime < 0)
-            {
-                ServerRoomManager.Instance.Log($"ActorBehaviour Save Buffer Error - AiDurationTime is less than 0 - Name:{Name} - Time:{AiDurationTime}");
-                AiDurationTime = 0;
-            }
-
-            bw.Write(AiDurationTime);
-            bw.Write(AiTotalTime);
+//            // AI state params
+//            bw.Write(AiState);
+//            bw.Write(AiTargetId);
+//            bw.Write(AiCellIndexTo);
+//            if (AiDurationTime > 0)
+//            {
+//                AiDurationTime -= (float) (DateTime.Now - AiStartTime).TotalSeconds;
+//            }
+//
+//            if (AiDurationTime < 0)
+//            {
+//                ServerRoomManager.Instance.Log($"ActorBehaviour Save Buffer Error - AiDurationTime is less than 0 - Name:{Name} - Time:{AiDurationTime}");
+//                AiDurationTime = 0;
+//            }
+//            bw.Write(AiDurationTime);
+//            bw.Write(AiTotalTime);
+            
+            // High AI state params
             bw.Write(HighAiState);
             bw.Write(HighAiCellIndexTo);
             bw.Write(HighAiTargetId);
+            if (HighAiDurationTime > 0)
+            {
+                HighAiDurationTime -= (float) (DateTime.Now - HighAiStartTime).TotalSeconds;
+            }
+            if (HighAiDurationTime < 0)
+            {
+                ServerRoomManager.Instance.Log($"ActorBehaviour Save Buffer Error - HighAiDurationTime is less than 0 - Name:{Name} - Time:{HighAiDurationTime}");
+                HighAiDurationTime = 0;
+            }
+            bw.Write(HighAiDurationTime);
+            bw.Write(HighAiTotalTime);
         }
 
         public void LoadBuffer(BinaryReader br, int header)
@@ -222,36 +238,52 @@ namespace AI
             AmmoBaseMax = AmmoBase;
             AmmoBaseMax = br.ReadInt32();
 
-            if (header >= 4)
-            { // AI State params
-                AiState = br.ReadInt32();
-                AiTargetId = br.ReadInt64();
-                AiCellIndexTo = br.ReadInt32();
-            }
-
-            if (header >= 5)
+            if (header >= 9)
             {
-                // 开始时间从读盘时重新计算, 这样玩家下次登录以后, 得到的时间差, 都是在线的时间
-                // 玩家离线的时间不计算在内, 如果要想把离线时间也计算在内, 需要在存盘的时候, 把存盘时间记录下来, 
-                // 然后读盘的时候读取到AiStartTime里
-                AiDurationTime = br.ReadSingle();
-                AiStartTime = DateTime.Now; 
-            }
-
-            if (header >= 6)
-            {
-                AiTotalTime = br.ReadSingle();
+                // 去掉了4,5,6的修改, 普通AI状态不再保存, 仅保存高级AI的参数
             }
             else
             {
-                AiTotalTime = AiDurationTime;
+                if (header >= 4)
+                {
+                    // AI State params
+                    AiState = br.ReadInt32();
+                    AiTargetId = br.ReadInt64();
+                    AiCellIndexTo = br.ReadInt32();
+                }
+
+                if (header >= 5)
+                {
+                    // 开始时间从读盘时重新计算, 这样玩家下次登录以后, 得到的时间差, 都是在线的时间
+                    // 玩家离线的时间不计算在内, 如果要想把离线时间也计算在内, 需要在存盘的时候, 把存盘时间记录下来, 
+                    // 然后读盘的时候读取到AiStartTime里
+                    AiDurationTime = br.ReadSingle();
+                    AiStartTime = DateTime.Now;
+                }
+
+                if (header >= 6)
+                {
+                    AiTotalTime = br.ReadSingle();
+                }
+                else
+                {
+                    AiTotalTime = AiDurationTime;
+                }
             }
 
+            // High AI state params
             if (header >= 7)
             { // 读取高级AI存盘数据, AI-代理权
                 HighAiState = br.ReadInt32();
                 HighAiCellIndexTo = br.ReadInt32();
                 HighAiTargetId = br.ReadInt64();
+            }
+
+            if (header >= 8)
+            {
+                HighAiDurationTime = br.ReadSingle();
+                HighAiTotalTime = br.ReadSingle();
+                HighAiStartTime = DateTime.Now; 
             }
         }
         

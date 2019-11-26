@@ -48,7 +48,7 @@ namespace AI
         {
             MemoryStream ms = new MemoryStream();
             BinaryWriter bw = new BinaryWriter(ms);
-            int version = 7;
+            int version = 9;
             bw.Write(version);
             Dictionary<long, ActorBehaviour> newAllActors = new Dictionary<long, ActorBehaviour>();
             foreach (var keyValue in AllActors)

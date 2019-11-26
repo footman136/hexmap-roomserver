@@ -54,7 +54,7 @@ public class RoomLogic
         AddListener();
         
         DateTime nowTime = DateTime.Now;
-        ServerRoomManager.Instance.Log($"RoomLogic Init - Battle-room Opened - {_roomName}.{nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
+        ServerRoomManager.Instance.Log($"RoomLogic Init - Battle-room Opened - {_roomName}.{nowTime.ToLongDateString()} {nowTime.ToLongTimeString()}");
     }
 
     public void Fini()
@@ -64,7 +64,7 @@ public class RoomLogic
         Save();
         
         DateTime nowTime = DateTime.Now;
-        ServerRoomManager.Instance.Log($"RoomLogic Fini - Battle-room Closed - {_roomName}.{nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
+        ServerRoomManager.Instance.Log($"RoomLogic Fini - Battle-room Closed - {_roomName}.{nowTime.ToLongDateString()} {nowTime.ToLongTimeString()}");
     }
 
     public void AddListener()
@@ -191,7 +191,7 @@ public class RoomLogic
         SaveRes();
         SaveAllPlayers();
         DateTime nowTime = DateTime.Now;
-        ServerRoomManager.Instance.Log($"RoomLogic - Game saved. {nowTime.ToShortDateString()} {nowTime.ToShortTimeString()}");
+        ServerRoomManager.Instance.Log($"RoomLogic - Game saved. {nowTime.ToLongDateString()} {nowTime.ToLongTimeString()}");
     }
 
     /// <summary>
@@ -321,11 +321,7 @@ public class RoomLogic
         // 2-创建实例, 然后把每个玩家在redis的存盘都读出来
         for (int i = 0; i < playerIdList.Count; ++i)
         {
-            PlayerInfoInRoom piir = new PlayerInfoInRoom();
-            if (piir != null)
-            {
-                piir.Enter.TokenId = playerIdList[i];
-            }
+            PlayerInfoInRoom piir = new PlayerInfoInRoom {Enter = {TokenId = playerIdList[i]}};
 
             if (LoadPlayer(piir))
             { // 可能存在没有存盘的情况, 比如玩家刚刚进入游戏, 而服务器还没有存盘, 
@@ -397,7 +393,7 @@ public class RoomLogic
         // 本玩家身上的物体的数量
         if (piir == null)
         {
-            ServerRoomManager.Instance.Log("RoomLogic SaveCommonInfo Error - player not found!");
+            ServerRoomManager.Instance.Log("RoomLogic SavePlayerDebugInfo Error - player not found!");
             return;
         }
 
@@ -643,21 +639,6 @@ public class RoomLogic
         return null;
     }
 
-    /// <summary>
-    /// 注意: 这里有两个版本, 这个版本慢一点
-    /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
-    public PlayerInfoInRoom GetPlayerInRoom(SocketAsyncEventArgs args)
-    {
-        PlayerInfo pi = ServerRoomManager.Instance.GetPlayer(args);
-        if (pi != null)
-        {
-            return GetPlayerInRoom(pi.Enter.TokenId);
-        }
-
-        return null;
-    }
     #endregion
     
     /// <summary>
@@ -764,8 +745,7 @@ public class RoomLogic
         if (input.RoomId != _roomId)
             return;
 
-        var piir = GetPlayerInRoom(args);
-
+        var piir = GetPlayerInRoom(input.OwnerId);
         if (piir == null)
         {
             ActorAddReply output = new ActorAddReply()
@@ -773,7 +753,7 @@ public class RoomLogic
                 Ret = false,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAddReply, output.ToByteArray());
-            ServerRoomManager.Instance.Log($"MSG: ActorAdd - 当前玩家不在本本战场！战场名:{RoomName} - 玩家个数:{PlayersInRoom.Count}");
+            ServerRoomManager.Instance.Log($"MSG: ActorAdd - Player not found in server! Id:{input.OwnerId}"); // 当前玩家不在本本战场！
         }
         else
         {
@@ -854,7 +834,7 @@ public class RoomLogic
         
         if (input.CellIndexFrom == 0 || input.CellIndexTo == 0)
         {
-            Debug.LogError("OnActorMove Fuck!!! Actor position is lost!!!");
+            Debug.LogError("RoomLogic OnActorMove Error - Actor position is lost!");
         }
         ActorMoveReply output = new ActorMoveReply()
         {
@@ -874,40 +854,54 @@ public class RoomLogic
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
         
-        if (input.CellIndexFrom == 0)
+        if (input.AiCellIndexFrom == 0)
         {
-            Debug.LogError("OnActorAiState Error! Actor position is lost!!!");
+            string msg = $"Actor position is lost!";
+            ServerRoomManager.Instance.Log("RoomLogic OnActorAiState Error - " + msg);
+            ActorAiStateReply output2 = new ActorAiStateReply()
+            {
+                RoomId = input.RoomId,
+                OwnerId = input.OwnerId,
+                ActorId = input.ActorId,
+                Ret = false,
+                ErrMsg = msg,
+            };
+                
+            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAiStateReply, output2.ToByteArray());
+            return;
         }
         
         // 更新单元Ai信息,在服务器的ActorBehaviour里保存一份
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)
         {
-            ab.AiState = input.State;
-            ab.AiTargetId = input.TargetId;
-            ab.CellIndex = input.CellIndexFrom;
-            ab.AiCellIndexTo = input.CellIndexTo;
+            ab.AiState = input.AiState;
+            ab.CellIndex = input.AiCellIndexFrom;
+            ab.AiCellIndexTo = input.AiCellIndexTo;
+            ab.AiTargetId = input.AiTargetId;
             ab.Orientation = input.Orientation;
-            ab.AiDurationTime = input.DurationTime;
+            ab.AiDurationTime = input.AiDurationTime;
+            ab.AiTotalTime = input.AiTotalTime;
             ab.AiStartTime = DateTime.Now; // 记录得到当前状态的时间, 在存盘的时候再记录一下时间, 把剩余时间保存起来
-            ab.AiTotalTime = input.TotalTime;
         }
-        
+
+        // 注意: 有一种情况, 可能是ab并不存在,但是这条消息还是有用的,因为ActorRemoveReply消息里, 服务器已经把本单元删掉了, 
+        // 但是服务器仍然需要转发一条将单位状态设置为StateEnum.DIE的消息
         ActorAiStateReply output = new ActorAiStateReply()
         {
             RoomId = input.RoomId,
             OwnerId = input.OwnerId,
             ActorId = input.ActorId,
-            TargetId = input.TargetId,
-            State = input.State,
-            CellIndexFrom = input.CellIndexFrom,
-            CellIndexTo = input.CellIndexTo,
+            AiState = input.AiState,
+            AiCellIndexFrom = input.AiCellIndexFrom,
+            AiCellIndexTo = input.AiCellIndexTo,
+            AiTargetId = input.AiTargetId,
             Orientation = input.Orientation,
-            DurationTime = input.DurationTime,
-            TotalTime = input.TotalTime,
+            AiDurationTime = input.AiDurationTime,
+            AiTotalTime = input.AiTotalTime,
             Ret = true,
         };
-        
+    
         BroadcastMsg(ROOM_REPLY.ActorAiStateReply, output.ToByteArray());
     }
 
@@ -922,28 +916,26 @@ public class RoomLogic
         if (ab != null)
         {
             ab.HighAiState = input.HighAiState;
-            ab.HighAiTargetId = input.HighTargetId;
+            ab.HighAiTargetId = input.HighAiTargetId;
             ab.HighAiCellIndexTo = input.HighAiCellIndexTo;
-        
-            ActorAiStateHighReply output2 = new ActorAiStateHighReply()
-            {
-                RoomId = ab.RoomId,
-                OwnerId = ab.OwnerId,
-                ActorId = ab.ActorId,
-                State = ab.AiState,
-                TargetId = ab.AiTargetId,
-                CellIndexFrom = ab.CellIndex,
-                CellIndexTo = ab.AiCellIndexTo,
-                Orientation = ab.Orientation,
-                DurationTime = ab.AiDurationTime,
-                TotalTime = ab.AiTotalTime,
-                HighAiState = ab.HighAiState,
-                HighAiTargetId = ab.HighAiTargetId,
-                HighAiCellIndexTo = ab.HighAiCellIndexTo,
-                Ret = true,
-            };
-            ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());
+            ab.HighAiDurationTime = input.HighAiDurationTime;
+            ab.HighAiTotalTime = input.HighAiTotalTime;
+            ab.HighAiStartTime = DateTime.Now; // 记录得到当前状态的时间, 在存盘的时候再记录一下时间, 把剩余时间保存起来
         }
+            
+        ActorAiStateHighReply output2 = new ActorAiStateHighReply()
+        {
+            RoomId = input.RoomId,
+            OwnerId = input.OwnerId,
+            ActorId = input.ActorId,
+            HighAiState = input.HighAiState,
+            HighAiTargetId = input.HighAiTargetId,
+            HighAiCellIndexTo = input.HighAiCellIndexTo,
+            HighAiDurationTime = input.HighAiDurationTime,
+            HighAiTotalTime = input.HighAiTotalTime,
+            Ret = true,
+        };
+        BroadcastMsg(ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());
     }
 
     private void OnUpdateActorPos(SocketAsyncEventArgs args, byte[] bytes)
@@ -953,7 +945,7 @@ public class RoomLogic
             return; // 不是自己房间的消息，略过
         if (input.CellIndex == 0)
         {
-            Debug.LogError("OnUpdateActorPos Error! Actor position is lost!!!");
+            Debug.LogError("RoomLogic OnUpdateActorPos Error - Actor position is lost!");
         }
         var ab = ActorManager.GetActor(input.ActorId);
         if (ab != null)
@@ -989,10 +981,10 @@ public class RoomLogic
         TryCommand input = TryCommand.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfoInRoom piir = GetPlayerInRoom(args);
-        if (piir == null || piir.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(input.OwnerId);
+        if (piir == null)
         {
-            string msg = "在服务器没有找到本玩家!";
+            string msg = "在服务器没有找到该玩家!";
             TryCommandReply output = new TryCommandReply()
             {
                 RoomId = input.RoomId,
@@ -1001,7 +993,7 @@ public class RoomLogic
                 ErrMsg = msg,
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.TryCommandReply, output.ToByteArray());
-            ServerRoomManager.Instance.Log("RoomLogic OnTryCommand Error - " + msg);
+            ServerRoomManager.Instance.Log("RoomLogic OnTryCommand Error - " + msg +$" - Id:{input.OwnerId}");
             return;
         }
         
@@ -1013,7 +1005,7 @@ public class RoomLogic
             string msg = "";
             if (actionPointCost != input.ActionPointCost)
             { // 服务器校验一下
-                msg = $"行动点数服务器与客户端不一致! ({input.ActionPointCost} : {actionPointCost})";
+                msg = $"行动点数服务器与客户端不一致! {input.ActionPointCost} : {actionPointCost}";  
                 ret = false;
             }
 
@@ -1073,7 +1065,7 @@ public class RoomLogic
             return; // 不是自己房间的消息，略过
         if (input.CellIndex == 0)
         {
-            Debug.LogError("OnHarvestStart Fuck!!! Actor position is lost!!!");
+            Debug.LogError("RoomLogic OnHarvestStart Error - Actor position is lost!");
         }
         HarvestStartReply output = new HarvestStartReply()
         {
@@ -1096,7 +1088,7 @@ public class RoomLogic
 
         if (input.CellIndex == 0)
         {
-            Debug.LogError("OnHarvestStop Fuck!!! Actor position is lost!!!");
+            Debug.LogError("RoomLogic OnHarvestStop Error - Actor position is lost!");
         }
         // 修改地图上的资源数据
         var hr = ResManager.GetRes(input.CellIndex);
@@ -1109,10 +1101,10 @@ public class RoomLogic
         hr.SetAmount((ResInfo.RESOURCE_TYPE)input.ResType, input.ResRemain);
         
         // 修改玩家身上的资源数据
-        PlayerInfoInRoom piir = GetPlayerInRoom(args);
-        if (piir == null || piir.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(input.OwnerId);
+        if (piir == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic OnHarvestStop Error - player not found!{input.OwnerId}");
+            ServerRoomManager.Instance.Log($"RoomLogic OnHarvestStop Error - player not found in server! Id:{input.OwnerId}");
             return;
         }
         
@@ -1163,9 +1155,9 @@ public class RoomLogic
             return; // 不是自己房间的消息，略过
         // 注意: piir不见得是自己, 可能是任何玩家
         PlayerInfoInRoom piir = GetPlayerInRoom(input.OwnerId);
-        if (piir == null )
+        if (piir == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic OnUpdateRes Error - player not found!{input.OwnerId}");
+            ServerRoomManager.Instance.Log($"RoomLogic OnUpdateRes Error - player not found! Id:{input.OwnerId}");
             return;
         }
         UpdateResReply output = new UpdateResReply()
@@ -1185,10 +1177,10 @@ public class RoomLogic
         UpdateActionPoint input = UpdateActionPoint.Parser.ParseFrom(bytes);
         if (input.RoomId != RoomId)
             return; // 不是自己房间的消息，略过
-        PlayerInfoInRoom piir = GetPlayerInRoom(args);
-        if (piir == null || piir.Enter.TokenId != input.OwnerId)
+        PlayerInfoInRoom piir = GetPlayerInRoom(input.OwnerId);
+        if (piir == null)
         {
-            ServerRoomManager.Instance.Log($"RoomLogic OnUpdateActionPoint Error - player not found!{input.OwnerId}");
+            ServerRoomManager.Instance.Log($"RoomLogic OnUpdateActionPoint Error - player not found! Id:{input.OwnerId}");
             return;
         }
         UpdateActionPointReply output = new UpdateActionPointReply()
@@ -1341,6 +1333,7 @@ public class RoomLogic
             defender.Hp = 0;
             isEnemyDead = true;
             isFightAgain = false;
+            ServerRoomManager.Instance.Log($"RoomLogic OnFightStop 1 - {attacker.ActorId} killed {defender.ActorId}");
         }
 
         /////////////////
@@ -1408,6 +1401,7 @@ public class RoomLogic
             };
             ActorManager.RemoveActor(defender.ActorId);
             BroadcastMsg(ROOM_REPLY.ActorRemoveReply, output.ToByteArray());
+            ServerRoomManager.Instance.Log($"RoomLogic OnFightStop 2 - {attacker.ActorId} killed {defender.ActorId}");
         }
     }
     
