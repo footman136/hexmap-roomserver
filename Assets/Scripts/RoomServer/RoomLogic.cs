@@ -1304,7 +1304,7 @@ public class RoomLogic
                 OwnerId = input.OwnerId,
                 ActorId = input.ActorId,
                 Ret = false,
-                ErrMsg = "弹药基数不足, 无法攻击!",
+                ErrMsg = "弹药基数不足!",
             };
             ServerRoomManager.Instance.SendMsg(args, ROOM_REPLY.FightStopReply, output.ToByteArray());
             return;
@@ -1337,7 +1337,7 @@ public class RoomLogic
         }
 
         /////////////////
-        {// 10-血量, 群发, 挨打者
+        {// 10-挨打者的血量, 群发, 
             UpdateActorInfoReply output = new UpdateActorInfoReply()
             {
                 RoomId = defender.RoomId,
@@ -1349,7 +1349,7 @@ public class RoomLogic
             };
             BroadcastMsg(ROOM_REPLY.UpdateActorInfoReply, output.ToByteArray());
         }
-        {// 11-弹药基数, 群发, 攻击者
+        {// 11-攻击者的弹药基数, 群发, 
             UpdateActorInfoReply output = new UpdateActorInfoReply()
             {
                 RoomId = attacker.RoomId,

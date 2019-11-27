@@ -591,6 +591,12 @@ public class RoomMsgReply
                 AttackInterval = ab.AttackInterval,
                 AmmoBase = ab.AmmoBase,
                 AmmoBaseMax = ab.AmmoBaseMax,
+                // High AI params
+                HighAiState = ab.HighAiState,
+                HighAiTargetId = ab.HighAiTargetId,
+                HighAiCellIndexTo = ab.HighAiCellIndexTo,
+                HighAiDurationTime = ab.HighAiDurationTime,
+                HighAiTotalTime = ab.HighAiTotalTime,
                 
                 Ret = true,
             };
@@ -606,20 +612,6 @@ public class RoomMsgReply
                     ab.HighAiDurationTime = 0f;
                 }
             }
-
-            ActorAiStateHighReply output2 = new ActorAiStateHighReply()
-            {
-                RoomId = ab.RoomId,
-                OwnerId = ab.OwnerId,
-                ActorId = ab.ActorId,
-                HighAiState = ab.HighAiState,
-                HighAiTargetId = ab.HighAiTargetId,
-                HighAiCellIndexTo = ab.HighAiCellIndexTo,
-                HighAiDurationTime = ab.HighAiDurationTime,
-                HighAiTotalTime = ab.HighAiTotalTime,
-                Ret = true,
-            };
-            ServerRoomManager.Instance.SendMsg(_args, ROOM_REPLY.ActorAiStateHighReply, output2.ToByteArray());
         }
 
         {
